@@ -1,0 +1,2 @@
+- [OpenAI lazy-init](openai-lazy-init.md) — all OpenAI clients must be lazy; throwing at module load breaks server startup without a key
+- [Dashboard API migration](dashboard-api-migration.md) — original dashboard used Laravel /api/emissions; migrated to Express /api/activities

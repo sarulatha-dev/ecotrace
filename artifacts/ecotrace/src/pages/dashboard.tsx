@@ -19,7 +19,14 @@ import {
   Zap,
   Utensils
 } from "lucide-react";
-import axios from "axios";
+import {
+  useListActivities,
+  getListActivitiesQueryKey,
+  useCreateActivity,
+  useDeleteActivity,
+  useGetActivitySummary,
+  getGetActivitySummaryQueryKey,
+} from "@workspace/api-client-react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -34,7 +41,6 @@ import {
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 
-// Register Chart.js modules
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -46,59 +52,38 @@ ChartJS.register(
   Filler
 );
 
-interface EmissionRecord {
-  id: number;
-  user_id: string;
-  transport: number;
-  electricity: number;
-  food: number;
-  total: number;
-  created_at: string;
-}
-
 export default function Dashboard() {
   const sessionId = useSessionId();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Local state for emissions records
-  const [emissions, setEmissions] = useState<EmissionRecord[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [submitting, setSubmitting] = useState<boolean>(false);
-
-  // Form input state
   const [transport, setTransport] = useState<string>("");
   const [electricity, setElectricity] = useState<string>("");
   const [food, setFood] = useState<string>("");
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // Fetch emissions from Laravel backend via Axios
-  const fetchEmissions = async () => {
-    if (!sessionId) return;
-    try {
-      setLoading(true);
-      const res = await axios.get<EmissionRecord[]>("/api/emissions", {
-        params: { sessionId }
-      });
-      setEmissions(res.data);
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Error fetching data",
-        description: "Failed to connect to the Laravel API.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const summaryQuery = useGetActivitySummary(
+    { sessionId: sessionId!, days: 7 },
+    { query: { enabled: !!sessionId, queryKey: getGetActivitySummaryQueryKey({ sessionId: sessionId!, days: 7 }) } }
+  );
 
-  useEffect(() => {
-    if (sessionId) {
-      fetchEmissions();
-    }
-  }, [sessionId]);
+  const activitiesQuery = useListActivities(
+    { sessionId: sessionId! },
+    { query: { enabled: !!sessionId, queryKey: getListActivitiesQueryKey({ sessionId: sessionId! }) } }
+  );
 
-  // Handle addition of an emission record
+  const createActivity = useCreateActivity();
+  const deleteActivity = useDeleteActivity();
+
+  const summary = summaryQuery.data;
+  const activities = activitiesQuery.data ?? [];
+  const loading = summaryQuery.isLoading || activitiesQuery.isLoading;
+
+  const totalCo2 = summary?.totalCo2 ?? 0;
+  const dailyAverage = summary?.dailyAverage ?? 0;
+  const treeEquivalent = summary?.treeEquivalent ?? 0;
+  const flightHoursEquivalent = summary?.flightHoursEquivalent ?? 0;
+
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sessionId) return;
@@ -114,28 +99,45 @@ export default function Dashboard() {
 
     try {
       setSubmitting(true);
-      const res = await axios.post<EmissionRecord>("/api/emissions", {
-        sessionId,
-        transport: Number(transport) || 0,
-        electricity: Number(electricity) || 0,
-        food: Number(food) || 0
-      });
+      const promises: Promise<unknown>[] = [];
 
-      // Update local emissions list
-      setEmissions((prev) => [res.data, ...prev]);
+      if (transport && Number(transport) > 0) {
+        promises.push(
+          createActivity.mutateAsync({
+            data: { sessionId, category: "transport", activityType: "car_km", value: Number(transport) }
+          })
+        );
+      }
+      if (electricity && Number(electricity) > 0) {
+        promises.push(
+          createActivity.mutateAsync({
+            data: { sessionId, category: "energy", activityType: "electricity_kwh", value: Number(electricity) }
+          })
+        );
+      }
+      if (food && Number(food) > 0) {
+        promises.push(
+          createActivity.mutateAsync({
+            data: { sessionId, category: "food", activityType: "beef_meal", value: Number(food) }
+          })
+        );
+      }
 
-      // Reset form
+      await Promise.all(promises);
+
       setTransport("");
       setElectricity("");
       setFood("");
 
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey({ sessionId }) }),
+        queryClient.invalidateQueries({ queryKey: getGetActivitySummaryQueryKey({ sessionId, days: 7 }) }),
+      ]);
+
       toast({
         title: "Record logged",
-        description: `Successfully logged emission: ${res.data.total.toFixed(1)} kg CO₂.`
+        description: "Successfully logged emissions."
       });
-
-      // Invalidate queries so that other components (like Insights, AI Coach) fetch fresh data
-      queryClient.invalidateQueries();
     } catch (err) {
       console.error(err);
       toast({
@@ -148,18 +150,17 @@ export default function Dashboard() {
     }
   };
 
-  // Handle deletion of an emission record
   const handleDeleteRecord = async (id: number) => {
     try {
-      await axios.delete(`/api/emissions/${id}`);
-      setEmissions((prev) => prev.filter((r) => r.id !== id));
+      await deleteActivity.mutateAsync({ id });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey({ sessionId: sessionId! }) }),
+        queryClient.invalidateQueries({ queryKey: getGetActivitySummaryQueryKey({ sessionId: sessionId!, days: 7 }) }),
+      ]);
       toast({
         title: "Record deleted",
         description: "The emission record was successfully deleted."
       });
-
-      // Invalidate query cache
-      queryClient.invalidateQueries();
     } catch (err) {
       console.error(err);
       toast({
@@ -170,17 +171,10 @@ export default function Dashboard() {
     }
   };
 
-  // Calculate aggregates
-  const totalCo2 = emissions.reduce((acc, curr) => acc + curr.total, 0);
-  const dailyAverage = emissions.length > 0 ? totalCo2 / 7.0 : 0;
-  const treeEquivalent = totalCo2 / 20.0;
-  const flightHoursEquivalent = totalCo2 / 90.0;
+  const chartDataList = [...activities].reverse();
 
-  // Chart configuration: process emissions database data (newest last for chart timeline)
-  const chartDataList = [...emissions].reverse();
-  
   const chartLabels = chartDataList.map((record) => {
-    const d = new Date(record.created_at);
+    const d = new Date(record.loggedAt);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit" });
   });
 
@@ -189,7 +183,7 @@ export default function Dashboard() {
     datasets: [
       {
         label: "Total Emissions (kg CO₂)",
-        data: chartDataList.length > 0 ? chartDataList.map((r) => r.total) : [0],
+        data: chartDataList.length > 0 ? chartDataList.map((r) => r.co2Amount) : [0],
         borderColor: "rgb(20, 110, 80)",
         backgroundColor: (context: ScriptableContext<"line">) => {
           const chart = context.chart;
@@ -239,7 +233,7 @@ export default function Dashboard() {
     }
   };
 
-  if (loading && emissions.length === 0) {
+  if (loading && activities.length === 0) {
     return (
       <div className="p-6 md:p-8 space-y-6 max-w-6xl mx-auto">
         <Skeleton className="h-10 w-48 mb-8" />
@@ -274,7 +268,6 @@ export default function Dashboard() {
       initial="hidden"
       animate="show"
     >
-      {/* Title Header */}
       <div className="flex justify-between items-center">
         <div>
           <motion.h1 variants={itemVariants} className="text-3xl font-bold tracking-tight text-foreground bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
@@ -286,7 +279,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Aggregate Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <motion.div variants={itemVariants}>
           <Card className="bg-gradient-to-br from-emerald-700 to-teal-800 text-white border-none shadow-md overflow-hidden relative">
@@ -341,9 +333,7 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Main Sections */}
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Left Side: Logger Form */}
         <motion.div variants={itemVariants} className="md:col-span-1">
           <Card className="h-full shadow-md border-border/60 backdrop-blur-md bg-card/90">
             <CardHeader>
@@ -388,7 +378,7 @@ export default function Dashboard() {
                     className="w-full focus-visible:ring-emerald-600"
                     disabled={submitting}
                   />
-                  <p className="text-[10px] text-muted-foreground">0.50 kg CO₂ per kWh</p>
+                  <p className="text-[10px] text-muted-foreground">0.233 kg CO₂ per kWh</p>
                 </div>
 
                 <div className="space-y-2">
@@ -406,7 +396,7 @@ export default function Dashboard() {
                     className="w-full focus-visible:ring-emerald-600"
                     disabled={submitting}
                   />
-                  <p className="text-[10px] text-muted-foreground">2.00 kg CO₂ per meal</p>
+                  <p className="text-[10px] text-muted-foreground">6.61 kg CO₂ per meal</p>
                 </div>
 
                 <Button
@@ -421,7 +411,6 @@ export default function Dashboard() {
           </Card>
         </motion.div>
 
-        {/* Right Side: Chart */}
         <motion.div variants={itemVariants} className="md:col-span-2">
           <Card className="h-full shadow-md border-border/60">
             <CardHeader>
@@ -437,7 +426,6 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* History Log Table */}
       <motion.div variants={itemVariants}>
         <Card className="shadow-md border-border/60">
           <CardHeader>
@@ -445,7 +433,7 @@ export default function Dashboard() {
             <CardDescription>Complete list of emissions stored in your PostgreSQL database.</CardDescription>
           </CardHeader>
           <CardContent>
-            {emissions.length === 0 ? (
+            {activities.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-lg bg-muted/20">
                 No logs recorded yet. Start by entering values in the form above!
               </div>
@@ -455,24 +443,24 @@ export default function Dashboard() {
                   <thead className="text-xs text-foreground uppercase border-b bg-muted/30">
                     <tr>
                       <th scope="col" className="px-4 py-3 font-semibold">Logged At</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">Transport (km)</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">Electricity (kWh)</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">Food (meals)</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">Calculated Total</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">Category</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">Activity</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">Value</th>
+                      <th scope="col" className="px-4 py-3 font-semibold">CO₂</th>
                       <th scope="col" className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {emissions.map((record) => (
+                    {activities.map((record) => (
                       <tr key={record.id} className="bg-background border-b hover:bg-muted/10 transition-colors">
                         <td className="px-4 py-3 text-foreground font-medium">
-                          {new Date(record.created_at).toLocaleString()}
+                          {new Date(record.loggedAt).toLocaleString()}
                         </td>
-                        <td className="px-4 py-3">{record.transport} km</td>
-                        <td className="px-4 py-3">{record.electricity} kWh</td>
-                        <td className="px-4 py-3">{record.food} meals</td>
+                        <td className="px-4 py-3 capitalize">{record.category}</td>
+                        <td className="px-4 py-3">{record.activityLabel}</td>
+                        <td className="px-4 py-3">{record.value} {record.unit}</td>
                         <td className="px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-500">
-                          {record.total.toFixed(2)} kg
+                          {record.co2Amount.toFixed(2)} kg
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button

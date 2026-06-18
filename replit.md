@@ -1,45 +1,56 @@
-# [Project name]
+# EcoTrace
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A carbon footprint awareness platform that lets users track emissions, join sustainability challenges, and get AI-driven coaching.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- **Frontend** (port 5000): `PORT=5000 pnpm --filter @workspace/ecotrace run dev`
+- **Backend** (port 3001): `PORT=3001 pnpm --filter @workspace/api-server run dev`
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string (auto-provisioned by Replit)
+- Optional env: `OPENAI_API_KEY` or `AI_INTEGRATIONS_OPENAI_API_KEY` — needed for AI Coach feature
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- pnpm workspaces, Node.js 20, TypeScript 5.9
+- Frontend: React 19 + Vite + Tailwind CSS 4 (`artifacts/ecotrace`)
+- API: Express 5, esbuild bundle (`artifacts/api-server`)
+- DB: PostgreSQL + Drizzle ORM (`lib/db`)
+- Validation: Zod, drizzle-zod
+- API codegen: Orval (from `lib/api-spec/openapi.yaml`)
+- Generated React hooks: `lib/api-client-react`
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — API source of truth; run codegen after changing
+- `lib/db/src/schema/` — Drizzle ORM schema (activities, challenges, etc.)
+- `artifacts/ecotrace/src/pages/` — React page components
+- `artifacts/api-server/src/routes/` — Express route handlers
+- `artifacts/api-server/src/lib/carbon-factors.ts` — CO₂ emission factors
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The Vite dev server proxies `/api/*` to `http://127.0.0.1:3001` (backend port)
+- OpenAI client is lazy-initialized — server starts without an API key; AI Coach errors gracefully at request time if key is absent
+- Dashboard was rewritten to use the Express `/api/activities` endpoint (the Laravel-style `/api/emissions` route no longer exists)
+- The `lib/integrations-openai-ai-server` package exports a Proxy-based `openai` object that defers key validation until first use
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- **Dashboard**: Log daily carbon activities (transport, energy, food) and view trend charts
+- **Log Activity**: Detailed activity logging with category/type breakdown
+- **Challenges**: Join eco-challenges to reduce footprint
+- **Insights**: Charts and analytics of your carbon breakdown
+- **Leaderboard**: Community comparison
+- **AI Coach**: Personalized sustainability tips powered by OpenAI (requires API key)
+- **My Report**: Export your carbon report
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Backend must run on port 3001 (not 5000); frontend runs on port 5000 (webview)
+- `pnpm --filter @workspace/db run push` must be run after schema changes to sync the dev DB
+- The `set NODE_ENV=development` in the original api-server `dev` script was Windows syntax — fixed to `NODE_ENV=development`
+- After changing `openapi.yaml`, run codegen before the frontend will pick up new types
