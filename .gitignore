@@ -56,3 +56,8 @@ laravel-backend/storage/framework/sessions/
 laravel-backend/storage/framework/views/
 laravel-backend/storage/framework/cache/data/
 
+
+# environment files
+.env
+artifacts/api-server/.env
+
