@@ -1,0 +1,410 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: EcoTrace Carbon Footprint Awareness Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: activities
+    description: Carbon activity logging
+  - name: challenges
+    description: Eco-friendly challenges
+  - name: summary
+    description: Dashboard summary data
+  - name: leaderboard
+    description: Community leaderboard
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /activities:
+    get:
+      operationId: listActivities
+      tags: [activities]
+      summary: List activities for a session
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+    post:
+      operationId: createActivity
+      tags: [activities]
+      summary: Log a new carbon activity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivityInput"
+      responses:
+        "201":
+          description: Created activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+        "400":
+          description: Invalid input
+
+  /activities/{id}:
+    delete:
+      operationId: deleteActivity
+      tags: [activities]
+      summary: Delete an activity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
+  /activities/summary:
+    get:
+      operationId: getActivitySummary
+      tags: [summary]
+      summary: Get carbon footprint summary for a session
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Summary data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivitySummary"
+
+  /challenges:
+    get:
+      operationId: listChallenges
+      tags: [challenges]
+      summary: List all available eco challenges
+      responses:
+        "200":
+          description: List of challenges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Challenge"
+
+  /challenges/{id}/complete:
+    post:
+      operationId: completeChallenge
+      tags: [challenges]
+      summary: Mark a challenge as completed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChallengeCompletionInput"
+      responses:
+        "201":
+          description: Challenge completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChallengeCompletion"
+        "400":
+          description: Already completed today or invalid
+
+  /challenges/completions:
+    get:
+      operationId: listChallengeCompletions
+      tags: [challenges]
+      summary: List completed challenges for a session
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of completions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChallengeCompletion"
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get community leaderboard
+      parameters:
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /coach/advice:
+    post:
+      operationId: getCoachAdvice
+      tags: [coach]
+      summary: Get personalized AI coaching advice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachAdviceInput"
+      responses:
+        "200":
+          description: AI coaching advice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachAdvice"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Activity:
+      type: object
+      required: [id, sessionId, category, activityType, activityLabel, value, unit, co2Amount, loggedAt]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: string
+        category:
+          type: string
+          enum: [transport, food, energy, shopping]
+        activityType:
+          type: string
+        activityLabel:
+          type: string
+        value:
+          type: number
+        unit:
+          type: string
+        co2Amount:
+          type: number
+        loggedAt:
+          type: string
+
+    ActivityInput:
+      type: object
+      required: [sessionId, category, activityType, value]
+      properties:
+        sessionId:
+          type: string
+        category:
+          type: string
+          enum: [transport, food, energy, shopping]
+        activityType:
+          type: string
+        value:
+          type: number
+
+    ActivitySummary:
+      type: object
+      required: [totalCo2, byCategory, dailyAverage, globalAverage, treeEquivalent, flightHoursEquivalent, weeklyData]
+      properties:
+        totalCo2:
+          type: number
+        byCategory:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryBreakdown"
+        dailyAverage:
+          type: number
+        globalAverage:
+          type: number
+        treeEquivalent:
+          type: number
+        flightHoursEquivalent:
+          type: number
+        weeklyData:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyData"
+
+    CategoryBreakdown:
+      type: object
+      required: [category, co2Amount, percentage]
+      properties:
+        category:
+          type: string
+        co2Amount:
+          type: number
+        percentage:
+          type: number
+
+    DailyData:
+      type: object
+      required: [date, co2Amount]
+      properties:
+        date:
+          type: string
+        co2Amount:
+          type: number
+
+    Challenge:
+      type: object
+      required: [id, title, description, category, co2Reduction, icon, difficulty]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: [transport, food, energy, shopping]
+        co2Reduction:
+          type: number
+        icon:
+          type: string
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+
+    ChallengeCompletion:
+      type: object
+      required: [id, sessionId, challengeId, completedAt]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: string
+        challengeId:
+          type: integer
+        completedAt:
+          type: string
+
+    ChallengeCompletionInput:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, displayName, co2Reduced, challengesCompleted, totalCo2Logged, topCategory, isCurrentUser]
+      properties:
+        rank:
+          type: integer
+        displayName:
+          type: string
+        co2Reduced:
+          type: number
+        challengesCompleted:
+          type: integer
+        totalCo2Logged:
+          type: number
+        topCategory:
+          type: string
+        isCurrentUser:
+          type: boolean
+
+    CoachAdviceInput:
+      type: object
+      required: [sessionId]
+      properties:
+        sessionId:
+          type: string
+
+    CoachTip:
+      type: object
+      required: [category, tip, impact, effort]
+      properties:
+        category:
+          type: string
+        tip:
+          type: string
+        impact:
+          type: string
+        effort:
+          type: string
+          enum: [low, medium, high]
+
+    CoachAdvice:
+      type: object
+      required: [message, tips, focusArea, weeklyGoal]
+      properties:
+        message:
+          type: string
+        tips:
+          type: array
+          items:
+            $ref: "#/components/schemas/CoachTip"
+        focusArea:
+          type: string
+        weeklyGoal:
+          type: string
