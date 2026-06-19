@@ -2,6 +2,7 @@ modules = ["nodejs-20", "php-8.2", "web"]
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
+integrations = ["javascript_openai_ai_integrations:2.0.0"]
 
 [nix]
 channel = "stable-25_05"
@@ -58,6 +59,18 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 23651
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
