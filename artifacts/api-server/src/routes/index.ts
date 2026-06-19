@@ -5,6 +5,7 @@ import challengesRouter from "./challenges";
 import leaderboardRouter from "./leaderboard";
 import coachRouter from "./coach";
 import visionRouter from "./vision";
+import goalsRouter from "./goals";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(challengesRouter);
 router.use(leaderboardRouter);
 router.use(coachRouter);
 router.use(visionRouter);
+router.use(goalsRouter);
 
 export default router;

@@ -113,6 +113,33 @@ export const GetActivitySummaryResponse = zod.object({
 
 
 /**
+ * @summary Get daily CO₂ goal for a session
+ */
+export const GetGoalQueryParams = zod.object({
+  "sessionId": zod.coerce.string()
+})
+
+export const GetGoalResponse = zod.object({
+  "sessionId": zod.string(),
+  "dailyCo2Goal": zod.number().nullable()
+})
+
+
+/**
+ * @summary Set daily CO₂ goal for a session
+ */
+export const SetGoalBody = zod.object({
+  "sessionId": zod.string(),
+  "dailyCo2Goal": zod.number()
+})
+
+export const SetGoalResponse = zod.object({
+  "sessionId": zod.string(),
+  "dailyCo2Goal": zod.number().nullable()
+})
+
+
+/**
  * @summary List all available eco challenges
  */
 export const ListChallengesResponseItem = zod.object({

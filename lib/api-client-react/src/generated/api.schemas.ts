@@ -9,6 +9,16 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface Goal {
+  sessionId: string;
+  dailyCo2Goal: number | null;
+}
+
+export interface GoalInput {
+  sessionId: string;
+  dailyCo2Goal: number;
+}
+
 export interface ActivityStreak {
   currentStreak: number;
   longestStreak: number;
@@ -164,6 +174,10 @@ sessionId: string;
 export type GetActivitySummaryParams = {
 sessionId: string;
 days?: number;
+};
+
+export type GetGoalParams = {
+sessionId: string;
 };
 
 export type ListChallengeCompletionsParams = {

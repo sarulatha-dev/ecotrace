@@ -31,7 +31,10 @@ import type {
   CoachAdviceInput,
   GetActivityStreakParams,
   GetActivitySummaryParams,
+  GetGoalParams,
   GetLeaderboardParams,
+  Goal,
+  GoalInput,
   HealthStatus,
   LeaderboardEntry,
   ListActivitiesParams,
@@ -517,6 +520,160 @@ export function useGetActivitySummary<TData = Awaited<ReturnType<typeof getActiv
 
 
 
+
+export const getGetGoalUrl = (params: GetGoalParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/goals?${stringifiedParams}` : `/api/goals`
+}
+
+/**
+ * @summary Get daily CO₂ goal for a session
+ */
+export const getGoal = async (params: GetGoalParams, options?: RequestInit): Promise<Goal> => {
+
+  return customFetch<Goal>(getGetGoalUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGoalQueryKey = (params?: GetGoalParams,) => {
+    return [
+    `/api/goals`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGoalQueryOptions = <TData = Awaited<ReturnType<typeof getGoal>>, TError = ErrorType<unknown>>(params: GetGoalParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGoal>>, TError, TData>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGoalQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGoal>>> = ({ signal }) => getGoal(params, { signal });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGoal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGoalQueryResult = NonNullable<Awaited<ReturnType<typeof getGoal>>>
+export type GetGoalQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get daily CO₂ goal for a session
+ */
+
+export function useGetGoal<TData = Awaited<ReturnType<typeof getGoal>>, TError = ErrorType<unknown>>(
+ params: GetGoalParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGoal>>, TError, TData>, }
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGoalQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSetGoalUrl = () => {
+
+
+
+
+  return `/api/goals`
+}
+
+/**
+ * @summary Set daily CO₂ goal for a session
+ */
+export const setGoal = async (goalInput: GoalInput, options?: RequestInit): Promise<Goal> => {
+
+  return customFetch<Goal>(getSetGoalUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(goalInput)
+  }
+);}
+
+
+
+
+export const getSetGoalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setGoal>>, TError,{data: BodyType<GoalInput>}, TContext>, }
+): UseMutationOptions<Awaited<ReturnType<typeof setGoal>>, TError,{data: BodyType<GoalInput>}, TContext> => {
+
+const mutationKey = ['setGoal'];
+const {mutation: mutationOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setGoal>>, {data: BodyType<GoalInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setGoal(data,)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetGoalMutationResult = NonNullable<Awaited<ReturnType<typeof setGoal>>>
+    export type SetGoalMutationBody = BodyType<GoalInput>
+    export type SetGoalMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Set daily CO₂ goal for a session
+ */
+export const useSetGoal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setGoal>>, TError,{data: BodyType<GoalInput>}, TContext>, }
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setGoal>>,
+        TError,
+        {data: BodyType<GoalInput>},
+        TContext
+      > => {
+      return useMutation(getSetGoalMutationOptions(options));
+    }
 
 export const getListChallengesUrl = () => {
 

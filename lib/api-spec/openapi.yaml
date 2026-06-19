@@ -138,6 +138,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/ActivitySummary"
 
+  /goals:
+    get:
+      operationId: getGoal
+      tags: [activities]
+      summary: Get daily CO₂ goal for a session
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Goal data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+    put:
+      operationId: setGoal
+      tags: [activities]
+      summary: Set daily CO₂ goal for a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInput"
+      responses:
+        "200":
+          description: Updated goal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+
   /challenges:
     get:
       operationId: listChallenges
@@ -250,6 +286,25 @@ components:
           type: string
       required:
         - status
+
+    Goal:
+      type: object
+      required: [sessionId, dailyCo2Goal]
+      properties:
+        sessionId:
+          type: string
+        dailyCo2Goal:
+          type: number
+          nullable: true
+
+    GoalInput:
+      type: object
+      required: [sessionId, dailyCo2Goal]
+      properties:
+        sessionId:
+          type: string
+        dailyCo2Goal:
+          type: number
 
     ActivityStreak:
       type: object

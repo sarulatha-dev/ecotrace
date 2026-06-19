@@ -29,6 +29,9 @@ import {
   getGetActivitySummaryQueryKey,
   useGetActivityStreak,
   getGetActivityStreakQueryKey,
+  useGetGoal,
+  useSetGoal,
+  getGetGoalQueryKey,
 } from "@workspace/api-client-react";
 import {
   Chart as ChartJS,
@@ -64,6 +67,8 @@ export default function Dashboard() {
   const [electricity, setElectricity] = useState<string>("");
   const [food, setFood] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [goalInput, setGoalInput] = useState<string>("");
+  const [savingGoal, setSavingGoal] = useState<boolean>(false);
 
   const summaryQuery = useGetActivitySummary(
     { sessionId: sessionId!, days: 7 },
@@ -80,13 +85,52 @@ export default function Dashboard() {
     { query: { enabled: !!sessionId, queryKey: getGetActivityStreakQueryKey({ sessionId: sessionId! }) } }
   );
 
+  const goalQuery = useGetGoal(
+    { sessionId: sessionId! },
+    { query: { enabled: !!sessionId, queryKey: getGetGoalQueryKey({ sessionId: sessionId! }) } }
+  );
+
+  const setGoalMutation = useSetGoal();
+
   const createActivity = useCreateActivity();
   const deleteActivity = useDeleteActivity();
 
   const summary = summaryQuery.data;
   const activities = activitiesQuery.data ?? [];
   const streak = streakQuery.data;
+  const goal = goalQuery.data?.dailyCo2Goal ?? null;
   const loading = summaryQuery.isLoading || activitiesQuery.isLoading;
+
+  const todayCo2 = activities
+    .filter((a) => {
+      const d = new Date(a.loggedAt);
+      const today = new Date();
+      return (
+        d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate()
+      );
+    })
+    .reduce((sum, a) => sum + a.co2Amount, 0);
+
+  const goalProgress = goal && goal > 0 ? Math.min((todayCo2 / goal) * 100, 100) : 0;
+  const goalExceeded = goal !== null && todayCo2 > goal;
+
+  const handleSaveGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sessionId || !goalInput || Number(goalInput) <= 0) return;
+    try {
+      setSavingGoal(true);
+      await setGoalMutation.mutateAsync({ data: { sessionId, dailyCo2Goal: Number(goalInput) } });
+      await queryClient.invalidateQueries({ queryKey: getGetGoalQueryKey({ sessionId }) });
+      setGoalInput("");
+      toast({ title: "Goal saved", description: `Daily target set to ${goalInput} kg CO₂.` });
+    } catch {
+      toast({ title: "Failed to save goal", variant: "destructive" });
+    } finally {
+      setSavingGoal(false);
+    }
+  };
 
   const totalCo2 = summary?.totalCo2 ?? 0;
   const dailyAverage = summary?.dailyAverage ?? 0;
@@ -291,6 +335,38 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {goal !== null && (
+        <motion.div variants={itemVariants}>
+          <Card className={`shadow-md border ${goalExceeded ? "border-red-200 bg-red-50 dark:bg-red-950/20" : "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20"}`}>
+            <CardContent className="py-4 px-5 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-foreground flex items-center gap-1.5">
+                  <span className="text-base">{goalExceeded ? "⚠️" : "🎯"}</span>
+                  Today's Goal Progress
+                </span>
+                <span className={`font-semibold ${goalExceeded ? "text-red-600" : "text-emerald-700"}`}>
+                  {todayCo2.toFixed(2)} / {goal.toFixed(1)} kg CO₂
+                </span>
+              </div>
+              <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${goalExceeded ? "bg-red-500" : goalProgress >= 80 ? "bg-amber-500" : "bg-emerald-500"}`}
+                  style={{ width: `${goalProgress}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{goalProgress.toFixed(0)}% of daily target used</span>
+                <span className={goalExceeded ? "text-red-500 font-medium" : "text-emerald-600"}>
+                  {goalExceeded
+                    ? `${(todayCo2 - goal).toFixed(2)} kg over limit`
+                    : `${(goal - todayCo2).toFixed(2)} kg remaining`}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       <motion.div variants={itemVariants}>
         <Card className="border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900 shadow-sm">
           <CardContent className="py-3 px-5 flex items-center gap-4">
@@ -447,6 +523,33 @@ export default function Dashboard() {
                   {submitting ? "Logging..." : "Add Record"}
                 </Button>
               </form>
+
+              <div className="mt-5 pt-5 border-t border-border/60">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Daily CO₂ Goal</p>
+                <form onSubmit={handleSaveGoal} className="flex gap-2">
+                  <Input
+                    type="number"
+                    step="any"
+                    min="0.1"
+                    placeholder={goal !== null ? `Current: ${goal} kg` : "e.g. 5 kg"}
+                    value={goalInput}
+                    onChange={(e) => setGoalInput(e.target.value)}
+                    className="flex-1 focus-visible:ring-emerald-600 text-sm"
+                    disabled={savingGoal}
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white"
+                    disabled={savingGoal || !goalInput}
+                  >
+                    {savingGoal ? "..." : "Set"}
+                  </Button>
+                </form>
+                {goal !== null && (
+                  <p className="text-[10px] text-muted-foreground mt-1.5">Target: {goal} kg CO₂ per day</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
