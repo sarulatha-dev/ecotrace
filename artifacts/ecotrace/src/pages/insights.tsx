@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CATEGORY_COLORS, CATEGORY_LABELS } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, BarChart, Bar, XAxis, YAxis, LineChart, Line, CartesianGrid } from "recharts";
 import { Lightbulb, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -164,6 +164,25 @@ export default function Insights() {
 
   const pieColors = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
 
+  // Weekly trend: last 8 weeks, grouped by ISO week
+  const weeklyTrend = (() => {
+    const weeks: { label: string; co2: number }[] = [];
+    for (let w = 7; w >= 0; w--) {
+      const start = new Date();
+      start.setDate(start.getDate() - w * 7 - start.getDay());
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      const total = (allActivities ?? [])
+        .filter((a) => { const d = new Date(a.loggedAt); return d >= start && d <= end; })
+        .reduce((s, a) => s + a.co2Amount, 0);
+      const label = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      weeks.push({ label, co2: +total.toFixed(2) });
+    }
+    return weeks;
+  })();
+
   return (
     <motion.div className="p-6 md:p-8 space-y-8 max-w-5xl mx-auto" variants={container} initial="hidden" animate="show">
       <div>
@@ -186,6 +205,45 @@ export default function Insights() {
               </div>
             ) : (
               <ActivityHeatmap activities={allActivities ?? []} />
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Weekly trend line */}
+      <motion.div variants={item}>
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Weekly CO₂ Trend</CardTitle>
+            <CardDescription>Your total emissions per week over the past 8 weeks — see if you're improving.</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[240px]">
+            {weeklyTrend.every((w) => w.co2 === 0) ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm flex-col gap-2">
+                <Info className="h-5 w-5 opacity-40" />
+                Log activities to populate the trend line
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={weeklyTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}kg`} />
+                  <RechartsTooltip
+                    formatter={(v: number) => [`${v.toFixed(2)} kg CO₂`, "Weekly total"]}
+                    contentStyle={{ borderRadius: "8px", border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="co2"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2.5}
+                    dot={{ fill: "hsl(var(--primary))", r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: "#ff7a00", strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>

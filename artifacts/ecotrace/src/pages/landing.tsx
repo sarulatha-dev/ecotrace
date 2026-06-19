@@ -127,7 +127,16 @@ export default function Landing() {
         >
           {features.map((f) => (
             <motion.div key={f.title} variants={fade}>
-              <div className="h-full rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
+              <div
+                className="glow-el h-full rounded-2xl border border-border/60 bg-card p-6 shadow-sm flex flex-col gap-4"
+                onMouseMove={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  e.currentTarget.style.setProperty("--glow-x", `${e.clientX - rect.left}px`);
+                  e.currentTarget.style.setProperty("--glow-y", `${e.clientY - rect.top}px`);
+                  e.currentTarget.style.setProperty("--glow-opacity", "1");
+                }}
+                onMouseLeave={(e) => e.currentTarget.style.setProperty("--glow-opacity", "0")}
+              >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${f.color}`}>
                   <f.icon className="h-5 w-5" />
                 </div>

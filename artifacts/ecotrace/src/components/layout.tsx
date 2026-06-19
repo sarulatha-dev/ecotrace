@@ -44,10 +44,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm",
+                  "nav-glow flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm",
                   isActive 
-                    ? "bg-primary text-primary-foreground shadow-sm" 
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? "nav-active bg-primary text-primary-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <item.icon className="h-4 w-4" />
