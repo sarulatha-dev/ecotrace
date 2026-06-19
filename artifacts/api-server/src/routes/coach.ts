@@ -93,7 +93,7 @@ Please give me personalized coaching advice.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: process.env.XAI_API_KEY ? "grok-3-mini" : "gpt-4o-mini",
       max_completion_tokens: 1024,
       messages: [
         { role: "system", content: systemPrompt },

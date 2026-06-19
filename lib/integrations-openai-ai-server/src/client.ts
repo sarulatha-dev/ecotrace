@@ -1,20 +1,24 @@
 import OpenAI from "openai";
 
-const baseURL =
-  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "https://api.openai.com/v1";
-
 let _openai: OpenAI | null = null;
 
 export function getOpenAIClient(): OpenAI {
-  const apiKey =
+  const xaiKey = process.env.XAI_API_KEY;
+  const openaiKey =
     process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
     process.env.OPENAI_API_KEY;
 
+  const apiKey = xaiKey ?? openaiKey;
+
   if (!apiKey) {
     throw new Error(
-      "An OpenAI API key must be set via OPENAI_API_KEY or AI_INTEGRATIONS_OPENAI_API_KEY.",
+      "An AI API key must be set via XAI_API_KEY, OPENAI_API_KEY, or AI_INTEGRATIONS_OPENAI_API_KEY.",
     );
   }
+
+  const baseURL = xaiKey
+    ? "https://api.x.ai/v1"
+    : (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ?? "https://api.openai.com/v1");
 
   if (!_openai) {
     _openai = new OpenAI({ apiKey, baseURL });
