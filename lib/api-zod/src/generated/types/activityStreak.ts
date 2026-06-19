@@ -6,8 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CategoryBreakdown {
-  category: string;
-  co2Amount: number;
-  percentage: number;
+export interface ActivityStreak {
+  currentStreak: number;
+  longestStreak: number;
+  totalDays: number;
 }

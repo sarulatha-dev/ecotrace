@@ -95,6 +95,25 @@ paths:
         "404":
           description: Not found
 
+  /activities/streak:
+    get:
+      operationId: getActivityStreak
+      tags: [activities]
+      summary: Get logging streak for a session
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Streak data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityStreak"
+
   /activities/summary:
     get:
       operationId: getActivitySummary
@@ -231,6 +250,17 @@ components:
           type: string
       required:
         - status
+
+    ActivityStreak:
+      type: object
+      required: [currentStreak, longestStreak, totalDays]
+      properties:
+        currentStreak:
+          type: integer
+        longestStreak:
+          type: integer
+        totalDays:
+          type: integer
 
     Activity:
       type: object

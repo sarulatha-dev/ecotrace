@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, desc } from "drizzle-orm";
+import { eq, and, gte, desc, sql } from "drizzle-orm";
 import { db, activitiesTable } from "@workspace/db";
 import {
   ListActivitiesQueryParams,
@@ -10,6 +10,63 @@ import {
 import { calculateCo2, getActivityDef, GLOBAL_DAILY_AVERAGE_KG } from "../lib/carbon-factors";
 
 const router: IRouter = Router();
+
+router.get("/activities/streak", async (req, res): Promise<void> => {
+  const sessionId = req.query.sessionId as string | undefined;
+  if (!sessionId) {
+    res.status(400).json({ error: "sessionId is required" });
+    return;
+  }
+
+  const rows = await db
+    .selectDistinct({ day: sql<string>`DATE(${activitiesTable.loggedAt})` })
+    .from(activitiesTable)
+    .where(eq(activitiesTable.sessionId, sessionId))
+    .orderBy(sql`DATE(${activitiesTable.loggedAt})`);
+
+  const days = rows.map((r) => r.day).sort();
+  const totalDays = days.length;
+
+  if (totalDays === 0) {
+    res.json({ currentStreak: 0, longestStreak: 0, totalDays: 0 });
+    return;
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  const daySet = new Set(days);
+
+  const calcStreak = (startDate: string): number => {
+    let count = 0;
+    const d = new Date(startDate);
+    while (daySet.has(d.toISOString().split("T")[0])) {
+      count++;
+      d.setDate(d.getDate() - 1);
+    }
+    return count;
+  };
+
+  const anchorDay = daySet.has(today) ? today : daySet.has(yesterday) ? yesterday : null;
+  const currentStreak = anchorDay ? calcStreak(anchorDay) : 0;
+
+  let longestStreak = 0;
+  let run = 1;
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1]);
+    const curr = new Date(days[i]);
+    const diffDays = Math.round((curr.getTime() - prev.getTime()) / 86400000);
+    if (diffDays === 1) {
+      run++;
+    } else {
+      longestStreak = Math.max(longestStreak, run);
+      run = 1;
+    }
+  }
+  longestStreak = Math.max(longestStreak, run);
+
+  res.json({ currentStreak, longestStreak, totalDays });
+});
 
 router.get("/activities/summary", async (req, res): Promise<void> => {
   const parsed = GetActivitySummaryQueryParams.safeParse(req.query);

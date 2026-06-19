@@ -17,7 +17,8 @@ import {
   PlusCircle,
   Car,
   Zap,
-  Utensils
+  Utensils,
+  Flame
 } from "lucide-react";
 import {
   useListActivities,
@@ -26,6 +27,8 @@ import {
   useDeleteActivity,
   useGetActivitySummary,
   getGetActivitySummaryQueryKey,
+  useGetActivityStreak,
+  getGetActivityStreakQueryKey,
 } from "@workspace/api-client-react";
 import {
   Chart as ChartJS,
@@ -72,11 +75,17 @@ export default function Dashboard() {
     { query: { enabled: !!sessionId, queryKey: getListActivitiesQueryKey({ sessionId: sessionId! }) } }
   );
 
+  const streakQuery = useGetActivityStreak(
+    { sessionId: sessionId! },
+    { query: { enabled: !!sessionId, queryKey: getGetActivityStreakQueryKey({ sessionId: sessionId! }) } }
+  );
+
   const createActivity = useCreateActivity();
   const deleteActivity = useDeleteActivity();
 
   const summary = summaryQuery.data;
   const activities = activitiesQuery.data ?? [];
+  const streak = streakQuery.data;
   const loading = summaryQuery.isLoading || activitiesQuery.isLoading;
 
   const totalCo2 = summary?.totalCo2 ?? 0;
@@ -132,6 +141,7 @@ export default function Dashboard() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey({ sessionId }) }),
         queryClient.invalidateQueries({ queryKey: getGetActivitySummaryQueryKey({ sessionId, days: 7 }) }),
+        queryClient.invalidateQueries({ queryKey: getGetActivityStreakQueryKey({ sessionId }) }),
       ]);
 
       toast({
@@ -156,6 +166,7 @@ export default function Dashboard() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey({ sessionId: sessionId! }) }),
         queryClient.invalidateQueries({ queryKey: getGetActivitySummaryQueryKey({ sessionId: sessionId!, days: 7 }) }),
+        queryClient.invalidateQueries({ queryKey: getGetActivityStreakQueryKey({ sessionId: sessionId! }) }),
       ]);
       toast({
         title: "Record deleted",
@@ -237,7 +248,8 @@ export default function Dashboard() {
     return (
       <div className="p-6 md:p-8 space-y-6 max-w-6xl mx-auto">
         <Skeleton className="h-10 w-48 mb-8" />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
+          <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -278,6 +290,33 @@ export default function Dashboard() {
           </motion.p>
         </div>
       </div>
+
+      <motion.div variants={itemVariants}>
+        <Card className="border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900 shadow-sm">
+          <CardContent className="py-3 px-5 flex items-center gap-4">
+            <Flame className={`h-7 w-7 flex-shrink-0 ${(streak?.currentStreak ?? 0) > 0 ? "text-orange-500" : "text-muted-foreground"}`} />
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">{streak?.currentStreak ?? 0}</span>
+              <span className="text-sm text-orange-700 dark:text-orange-300 font-medium">
+                {(streak?.currentStreak ?? 0) === 1 ? "day streak" : "day streak"}
+              </span>
+            </div>
+            <div className="h-5 w-px bg-orange-200 dark:bg-orange-800 mx-1" />
+            <div className="text-xs text-orange-700/70 dark:text-orange-400/70">
+              Best: <span className="font-semibold">{streak?.longestStreak ?? 0}</span>
+            </div>
+            <div className="text-xs text-orange-700/70 dark:text-orange-400/70">
+              Total days logged: <span className="font-semibold">{streak?.totalDays ?? 0}</span>
+            </div>
+            {(streak?.currentStreak ?? 0) === 0 && (
+              <span className="ml-auto text-xs text-muted-foreground italic">Log an activity today to start your streak!</span>
+            )}
+            {(streak?.currentStreak ?? 0) > 0 && (
+              <span className="ml-auto text-xs text-orange-600 font-medium">🔥 Keep it up!</span>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <motion.div variants={itemVariants}>
@@ -331,6 +370,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </motion.div>
+
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
