@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import Dashboard from "@/pages/dashboard";
 import LogActivity from "@/pages/log-activity";
+import VisionUpload from "@/pages/vision-upload";
 import Challenges from "@/pages/challenges";
 import Insights from "@/pages/insights";
 import Leaderboard from "@/pages/leaderboard";
@@ -20,6 +21,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/log" component={LogActivity} />
+        <Route path="/scan" component={VisionUpload} />
         <Route path="/challenges" component={Challenges} />
         <Route path="/insights" component={Insights} />
         <Route path="/leaderboard" component={Leaderboard} />

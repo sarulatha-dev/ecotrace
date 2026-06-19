@@ -1,10 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { Leaf, PlusCircle, LayoutDashboard, Target, BarChart3, Trophy, FileText, Sparkles } from "lucide-react";
+import { Leaf, PlusCircle, LayoutDashboard, Target, BarChart3, Trophy, FileText, Sparkles, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/log", label: "Log Activity", icon: PlusCircle },
+  { href: "/scan", label: "Photo Scan", icon: ScanLine },
   { href: "/challenges", label: "Challenges", icon: Target },
   { href: "/insights", label: "Insights", icon: BarChart3 },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },

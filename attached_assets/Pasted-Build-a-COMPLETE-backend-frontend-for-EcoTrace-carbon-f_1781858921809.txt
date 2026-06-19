@@ -1,0 +1,382 @@
+Build a COMPLETE backend + frontend for EcoTrace carbon footprint tracker with DUAL MODE SYSTEM (Manual + Lazy/Auto) and PICTURE UPLOAD AI RECOGNITION feature:
+
+═══════════════════════════════════════════════════════════
+CORE FEATURE 1: DUAL MODE SYSTEM
+═══════════════════════════════════════════════════════════
+
+A. MANUAL MODE:
+- User logs activities manually:
+  - Travel: car, bike, bus, walking, cycling (1-tap buttons + km slider)
+  - Food: veg/non-veg toggle + amount (₹)
+  - Electricity: units input (kWh)
+  - Shopping: amount (₹)
+- Simple UI: 1-tap inputs, sliders, toggles
+
+B. LAZY MODE (AUTO MODE - MAIN USP):
+- User connects accounts:
+  - Google Location History
+  - Fitness apps (Apple Health/Google Fit)
+  - Bank transactions (CSV upload or Plaid API)
+  - Ride apps (Uber/Ola simulation)
+- System AUTO-ESTIMATES:
+  - Travel distance from location speed
+  - Transport type from speed pattern
+  - Food type from merchant name + amount
+  - Shopping from transaction history
+
+═══════════════════════════════════════════════════════════
+CORE FEATURE 2: PICTURE UPLOAD AI LOGGING
+═══════════════════════════════════════════════════════════
+
+NEW FEATURE: User uploads photo → AI auto-calculates carbon
+
+How it works:
+1. User uploads photo of:
+   - Bus/train ticket → distance visible
+   - Food item (vegetables, meat, restaurant dish)
+   - Car/bike (vehicle type)
+   - Electricity meter (reading visible)
+   - Shopping receipt (amount visible)
+
+2. OpenAI Vision API analyzes image:
+   Prompt: "Analyze this image. Identify the activity. Return EXACT JSON: {type: 'travel|food|electricity|shopping', value: number, unit: 'km|₹|units|item', transport: 'car|bike|bus|walking|cycling' (only for travel), veg: true|false (only for food), confidence: 0-1}"
+   
+   Examples:
+   - Bus ticket photo → {type:'travel', value:15, unit:'km', transport:'bus', confidence:0.95}
+   - Vegetable market photo → {type:'food', value:250, unit:'₹', veg:true, confidence:0.9}
+   - Chicken dish photo → {type:'food', value:400, unit:'₹', veg:false, confidence:0.88}
+   - Car photo → {type:'travel', value:1, unit:'item', transport:'car', confidence:0.92}
+   - Electricity meter → {type:'electricity', value:150, unit:'units', confidence:0.85}
+
+3. Calculate carbon from AI response:
+   - If confidence < 0.7 → show "Please confirm values" to user
+   - If confidence >= 0.7 → auto-log activity
+
+4. Store in database with auto_source = "vision"
+
+Frontend UI:
+- Camera/upload button (large, prominent)
+- Image preview with crop option
+- Typing animation while AI processes (3 dots pulsing)
+- WhatsApp-style chat bubble showing AI detection:
+  "I detected: 🚌 Bus ride, 15km"
+  "Carbon: 0.75kg CO₂"
+- Editable fields before confirm (user can adjust value)
+- Success animation: ✓ "Logged! 0.75kg CO₂ saved"
+
+═══════════════════════════════════════════════════════════
+CARBON CALCULATION ENGINE (REAL LOGIC)
+═══════════════════════════════════════════════════════════
+
+function calculateCarbon(type, value, unit, transport, veg) {
+  // Travel: kg CO₂ per km
+  const travelRates = {
+    walking: 0,        // 0 kg CO₂/km
+    cycling: 0,        // 0 kg CO₂/km
+    bus: 0.05,         // 0.05 kg CO₂/km
+    bike: 0.05,        // 0.05 kg CO₂/km
+    car: 0.21,         // 0.21 kg CO₂/km
+    flight: 0.25       // 0.25 kg CO₂/km
+  };
+  
+  // Food: kg CO₂ per ₹100
+  const foodRates = {
+    veg: 0.5,          // ₹100 = 0.5 kg CO₂
+    non_veg: 0.8       // ₹100 = 0.8 kg CO₂
+  };
+  
+  // Electricity: kg CO₂ per ₹100
+  const electricityRate = 0.12;  // ₹100 = 0.12 kg CO₂
+  
+  // Shopping: kg CO₂ per ₹100
+  const shoppingRate = 0.4;      // ₹100 = 0.4 kg CO₂
+  
+  if (type === "travel") {
+    return value * travelRates[transport]; // km × rate = kg CO₂
+  }
+  if (type === "food") {
+    const rate = veg ? foodRates.veg : foodRates.non_veg;
+    return (value / 100) * rate; // ₹ ÷ 100 × rate = kg CO₂
+  }
+  if (type === "electricity") {
+    return (value / 100) * electricityRate;
+  }
+  if (type === "shopping") {
+    return (value / 100) * shoppingRate;
+  }
+}
+
+═══════════════════════════════════════════════════════════
+AUTO-MODE CALCULATION ENGINE (LAZY LOGIC)
+═══════════════════════════════════════════════════════════
+
+A. Google Location → Travel:
+function classifyFromLocation(locationData) {
+  const speed = locationData.speed; // km/h
+  
+  if (speed < 5) return { transport: "walking", type: "travel" };
+  if (speed < 25) return { transport: "bike", type: "travel" };
+  if (speed < 60) return { transport: "car", type: "travel" };
+  return { transport: "flight", type: "travel" };
+}
+
+B. Fitness App → Walking/Cycling:
+function classifyFromFitness(fitnessData) {
+  const steps = fitnessData.steps;
+  const walking_km = steps * 0.000762; // step = 0.762m
+  return { 
+    type: "travel", 
+    value: walking_km, 
+    unit: "km", 
+    transport: "walking" 
+  };
+}
+
+C. Bank Transactions → Food/Shopping:
+function classifyFromBank(transaction) {
+  const merchant = transaction.merchant.toLowerCase();
+  const amount = transaction.amount; // ₹
+  
+  if (merchant.includes("zomato") || merchant.includes("swiggy")) {
+    const veg = amount < 300; // <₹300 likely veg
+    return { type: "food", value: amount, unit: "₹", veg: veg };
+  }
+  if (merchant.includes("amazon") || merchant.includes("flipkart")) {
+    return { type: "shopping", value: amount, unit: "₹" };
+  }
+  if (merchant.includes("electricity")) {
+    return { type: "electricity", value: amount, unit: "₹" };
+  }
+}
+
+═══════════════════════════════════════════════════════════
+DATABASE SCHEMA (Prisma ORM)
+═══════════════════════════════════════════════════════════
+
+schema.prisma:
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  created_at DateTime @default(now())
+  activities Activity[]
+  autoData   AutoData[]
+  streaks    Streak[]
+  aiChats    AIChat[]
+}
+
+model Activity {
+  id             String   @id @default(uuid())
+  user_id        String
+  user           User     @relation(fields: [user_id], references: [id])
+  type           String   // "travel", "food", "electricity", "shopping"
+  value          Float    // distance, amount, units
+  unit           String   // "km", "₹", "units", "item"
+  transport      String?  // "car", "bike", "bus", "walking", "cycling" (for travel)
+  veg            Boolean? // true/false (for food)
+  carbon_emission Float   // kg CO₂
+  auto_source    String?  // "manual", "lazy_mode", "vision", "gps", "fitness", "bank"
+  confidence_score Float? // 0-1 (for AI vision)
+  created_at     DateTime @default(now())
+}
+
+model AutoData {
+  id              String   @id @default(uuid())
+  user_id         String
+  user            User     @relation(fields: [user_id], references: [id])
+  source          String   // "google", "fitness", "bank", "ride_app"
+  raw_data        String   // JSON string
+  processed_carbon Float?
+  created_at      DateTime @default(now())
+}
+
+model Streak {
+  id              String   @id @default(uuid())
+  user_id         String   @unique
+  user            User     @relation(fields: [user_id], references: [id])
+  current_streak  Int      @default(0)
+  longest_streak  Int      @default(0)
+  last_active_date DateTime
+}
+
+model AIChat {
+  id         String   @id @default(uuid())
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id])
+  message    String
+  response   String
+  created_at DateTime @default(now())
+}
+
+═══════════════════════════════════════════════════════════
+BACKEND API ENDPOINTS (Node.js + Express)
+═══════════════════════════════════════════════════════════
+
+AUTH:
+- POST /auth/register → { name, email, password } → create user
+- POST /auth/login → { email, password } → return JWT token
+- GET /auth/me → return current user (with JWT)
+
+MANUAL MODE:
+- POST /activity/add → { type, value, unit, transport, veg }
+  - Calculate carbon using calculateCarbon()
+  - Store with auto_source = "manual"
+- GET /activity/history → return user's activities (last 30 days)
+
+LAZY MODE (AUTO):
+- POST /auto/connect → { source, raw_data }
+  - Store in AutoData table
+- POST /auto/fetch → process all connected sources
+  - Google location → classify transport from speed → calculate carbon
+  - Fitness → steps to distance → calculate carbon
+  - Bank → classify merchant → calculate carbon
+  - Return: { total_carbon, activities_logged }
+- GET /auto/status → return connected sources
+
+PICTURE UPLOAD (VISION):
+- POST /ai/vision-upload → { image_url or base64 }
+  - Call OpenAI Vision API with prompt
+  - Parse JSON response: { type, value, unit, transport, veg, confidence }
+  - If confidence < 0.7 → return { needs_confirmation: true, detected: {...} }
+  - If confidence >= 0.7 → auto-log activity
+  - Calculate carbon using calculateCarbon()
+  - Store with auto_source = "vision", confidence_score = confidence
+  - Return: { carbon_emission, activity_id, message }
+
+DASHBOARD:
+- GET /dashboard/stats → return:
+  - total_carbon (today, week, month)
+  - weekly_trend (array of 7 days)
+  - category_breakdown ({ travel, food, electricity, shopping })
+  - current_streak
+
+GAMIFICATION:
+- GET /streak → return current_streak, longest_streak
+- POST /streak/update → update last_active_date, increment streak if daily activity
+- GET /challenges → return available challenges
+- POST /challenge/join → { challenge_id } → create UserChallenge
+- POST /challenge/progress → { challenge_id, progress } → update progress
+
+AI CHATBOT:
+- POST /ai/chat → { message }
+  - Fetch user's recent activities + carbon stats
+  - Send to OpenAI API with context:
+    Prompt: "You're EcoTrace AI coach. User's data: {recent_activities, total_carbon}. Answer: {user_message}"
+  - Return personalized reply
+- GET /ai/tips → return daily AI-generated tips
+
+═══════════════════════════════════════════════════════════
+FRONTEND COMPONENTS (React + Next.js + Tailwind)
+═══════════════════════════════════════════════════════════
+
+pages/index.jsx → Landing page (day-night auto theme)
+pages/dashboard.jsx → Main dashboard with charts
+pages/manual-log.jsx → Manual activity logging
+pages/lazy-mode.jsx → Auto mode setup + status
+pages/vision-upload.jsx → Picture upload AI logging
+
+Components:
+components/Hero.jsx → Landing hero (glassmorphism)
+components/Earth3D.jsx → 3D Earth (Three.js)
+components/Stats.jsx → Animated stat cards
+components/ModeToggle.jsx → Manual/Lazy mode switch
+components/ManualForm.jsx → Manual input form (sliders, toggles)
+components/LazySetup.jsx → Connect accounts UI
+components/VisionUploader.jsx → Picture upload + AI chat bubble
+components/ActivityList.jsx → Activity history list
+components/DashboardCharts.jsx → Weekly trends (Recharts)
+components/StreakCounter.jsx → Streak display with flame animation
+components/AIChat.jsx → WhatsApp-style chatbot
+components/Leaderboard.jsx → Friends/global ranking
+
+═══════════════════════════════════════════════════════════
+TECH STACK
+═══════════════════════════════════════════════════════════
+
+Frontend:
+- React 18 + Next.js 14
+- Tailwind CSS 3.4
+- Recharts (for charts)
+- Framer Motion (animations)
+- Three.js (3D Earth)
+- React Icons + Lucide
+
+Backend:
+- Node.js 18 + Express 4
+- Prisma 5 (ORM)
+- PostgreSQL 15
+- JWT (auth)
+- OpenAI SDK (vision + chat)
+- Multer (file upload)
+
+Environment (.env):
+DATABASE_URL="postgresql://user:pass@localhost:5432/ecotrace"
+OPENAI_API_KEY="your_openai_key"
+JWT_SECRET="your_secret"
+PORT=3001
+
+═══════════════════════════════════════════════════════════
+DELIVERABLES: COMPLETE WORKING CODE (NO MOCKS)
+═══════════════════════════════════════════════════════════
+
+Generate ALL files with REAL implementation:
+
+BACKEND (8 files):
+1. package.json → dependencies list
+2. server.js → Express app setup, middleware, routes
+3. prisma/schema.prisma → database schema (above)
+4. services/carbonEngine.js → calculateCarbon() function + classification logic
+5. services/openaiVision.js → OpenAI Vision API integration
+6. routes/auth.js → POST /register, POST /login, GET /me
+7. routes/activity.js → POST /add, GET /history
+8. routes/auto.js → POST /connect, POST /fetch, GET /status
+9. routes/vision.js → POST /vision-upload (PICTURE UPLOAD)
+10. routes/dashboard.js → GET /stats
+11. routes/ai.js → POST /chat, GET /tips
+
+FRONTEND (12 files):
+12. pages/index.jsx → Landing page (day-night theme + 3D Earth)
+13. pages/dashboard.jsx → Dashboard with charts + streak
+14. pages/manual-log.jsx → Manual input form
+15. pages/lazy-mode.jsx → Auto mode setup
+16. pages/vision-upload.jsx → PICTURE UPLOAD PAGE (camera + AI chat bubble)
+17. components/Hero.jsx → Glassmorphism hero
+18. components/Earth3D.jsx → Three.js Earth
+19. components/Stats.jsx → Animated stat cards
+20. components/ModeToggle.jsx → Manual/Lazy switch
+21. components/ManualForm.jsx → Manual form (sliders, toggles)
+22. components/LazySetup.jsx → Connect accounts
+23. components/VisionUploader.jsx → Picture upload + AI detection bubble
+24. components/AIChat.jsx → WhatsApp-style chatbot
+25. styles/globals.css → Day-night gradients + animations
+26. utils/carbonEngine.js → Frontend carbon calculation (same as backend)
+27. .env.example → Environment variables
+28. README.md → Setup + run instructions
+
+═══════════════════════════════════════════════════════════
+
+CRITICAL REQUIREMENTS:
+- EVERYTHING must be production-ready and runnable
+- NO "TODO", "placeholder", or "insert code here"
+- Real OpenAI Vision API integration with proper prompt
+- Real carbon calculation formulas (not mock numbers)
+- Real auto-mode classification logic (speed → transport, merchant → food type)
+- Complete picture upload UI with camera, preview, typing animation, AI chat bubble
+- Apple-level premium UI (glassmorphism, smooth animations, micro-interactions)
+- Mobile-responsive design
+- Day-night auto-switch based on browser time
+
+START OUTPUTTING CODE FILES NOW.
+Begin with:
+1. package.json
+2. prisma/schema.prisma
+3. services/carbonEngine.js (REAL calculation logic)
+4. services/openaiVision.js (REAL OpenAI integration)
+5. routes/vision.js (PICTURE UPLOAD endpoint)
+6. pages/vision-upload.jsx (COMPLETE picture upload UI)
+7. components/VisionUploader.jsx (AI chat bubble component)
+... then remaining files
+
+Make it hackathon-winning quality!
