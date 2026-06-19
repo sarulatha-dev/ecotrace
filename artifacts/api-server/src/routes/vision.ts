@@ -72,7 +72,7 @@ Return only the JSON object, nothing else.`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENROUTER_API_KEY ? "openai/gpt-4o-mini" : process.env.XAI_API_KEY ? "grok-2-vision-1212" : "gpt-4o-mini",
+      model: process.env.OPENROUTER_API_KEY ? "meta-llama/llama-3.2-11b-vision-instruct" : process.env.XAI_API_KEY ? "grok-2-vision-1212" : "gpt-4o-mini",
       max_completion_tokens: 300,
       messages: [
         {
