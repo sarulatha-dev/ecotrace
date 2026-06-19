@@ -1,11 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { Leaf, PlusCircle, LayoutDashboard, Target, BarChart3, Trophy, FileText, Sparkles, ScanLine } from "lucide-react";
+import { Leaf, PlusCircle, LayoutDashboard, Target, BarChart3, Trophy, FileText, Sparkles, ScanLine, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/log", label: "Log Activity", icon: PlusCircle },
   { href: "/scan", label: "Photo Scan", icon: ScanLine },
+  { href: "/bank", label: "Bank Import", icon: CreditCard },
   { href: "/challenges", label: "Challenges", icon: Target },
   { href: "/insights", label: "Insights", icon: BarChart3 },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
@@ -35,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="flex-1 px-4 space-y-1 mt-2">
           {NAV_ITEMS.map((item) => {
             const isActive = location === item.href;
             return (
@@ -43,20 +44,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200",
+                  "flex items-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 text-sm",
                   isActive 
                     ? "bg-primary text-primary-foreground shadow-sm" 
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-4 w-4" />
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-6 mt-auto">
+        <div className="p-5 mt-auto">
           <div className="p-4 rounded-xl bg-accent/10 border border-accent/20">
             <h4 className="font-semibold text-accent-foreground text-sm mb-1">Make an Impact</h4>
             <p className="text-xs text-muted-foreground">Every small action counts towards a greener future.</p>
@@ -70,7 +71,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t flex items-center justify-around px-2 py-2 pb-safe">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t flex items-center justify-around px-1 py-1 pb-safe overflow-x-auto">
         {NAV_ITEMS.map((item) => {
           const isActive = location === item.href;
           return (
@@ -78,12 +79,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-1 p-2 min-w-[64px] rounded-lg transition-colors",
+                "flex flex-col items-center gap-0.5 p-2 min-w-[52px] rounded-lg transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <item.icon className={cn("h-6 w-6", isActive && "fill-primary/20")} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <item.icon className={cn("h-5 w-5", isActive && "fill-primary/20")} />
+              <span className="text-[9px] font-medium leading-tight text-center">{item.label}</span>
             </Link>
           );
         })}

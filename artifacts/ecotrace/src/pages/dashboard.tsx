@@ -1,5 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSessionId } from "@/hooks/use-session";
+import {
+  useGetActivitySummary, getGetActivitySummaryQueryKey,
+  useListActivities, getListActivitiesQueryKey,
+  useCreateActivity,
+  useGetActivityStreak, getGetActivityStreakQueryKey,
+  useGetGoal, getGetGoalQueryKey,
+  useSetGoal,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,56 +16,11 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import {
-  TreePine,
-  Plane,
-  Globe,
-  Activity,
-  Trash2,
-  PlusCircle,
-  Car,
-  Zap,
-  Utensils,
-  Flame
+  Activity, Globe, TreePine, Plane, PlusCircle, Car, Zap, Utensils,
+  Flame, BarChart3, CreditCard, ArrowRight
 } from "lucide-react";
-import {
-  useListActivities,
-  getListActivitiesQueryKey,
-  useCreateActivity,
-  useDeleteActivity,
-  useGetActivitySummary,
-  getGetActivitySummaryQueryKey,
-  useGetActivityStreak,
-  getGetActivityStreakQueryKey,
-  useGetGoal,
-  useSetGoal,
-  getGetGoalQueryKey,
-} from "@workspace/api-client-react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title as ChartTitle,
-  Tooltip as ChartTooltip,
-  Legend as ChartLegend,
-  Filler,
-  ScriptableContext
-} from "chart.js";
-import { Line } from "react-chartjs-2";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  ChartTitle,
-  ChartTooltip,
-  ChartLegend,
-  Filler
-);
 
 export default function Dashboard() {
   const sessionId = useSessionId();
@@ -91,9 +55,7 @@ export default function Dashboard() {
   );
 
   const setGoalMutation = useSetGoal();
-
   const createActivity = useCreateActivity();
-  const deleteActivity = useDeleteActivity();
 
   const summary = summaryQuery.data;
   const activities = activitiesQuery.data ?? [];
@@ -105,16 +67,48 @@ export default function Dashboard() {
     .filter((a) => {
       const d = new Date(a.loggedAt);
       const today = new Date();
-      return (
-        d.getFullYear() === today.getFullYear() &&
-        d.getMonth() === today.getMonth() &&
-        d.getDate() === today.getDate()
-      );
+      return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate();
     })
     .reduce((sum, a) => sum + a.co2Amount, 0);
 
   const goalProgress = goal && goal > 0 ? Math.min((todayCo2 / goal) * 100, 100) : 0;
   const goalExceeded = goal !== null && todayCo2 > goal;
+
+  const totalCo2 = summary?.totalCo2 ?? 0;
+  const dailyAverage = summary?.dailyAverage ?? 0;
+  const treeEquivalent = summary?.treeEquivalent ?? 0;
+  const flightHoursEquivalent = summary?.flightHoursEquivalent ?? 0;
+
+  const handleAddRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sessionId) return;
+    if (!transport && !electricity && !food) {
+      toast({ title: "Input error", description: "Please enter at least one value.", variant: "destructive" });
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const promises: Promise<unknown>[] = [];
+      if (transport && Number(transport) > 0)
+        promises.push(createActivity.mutateAsync({ data: { sessionId, category: "transport", activityType: "car_km", value: Number(transport) } }));
+      if (electricity && Number(electricity) > 0)
+        promises.push(createActivity.mutateAsync({ data: { sessionId, category: "energy", activityType: "electricity_kwh", value: Number(electricity) } }));
+      if (food && Number(food) > 0)
+        promises.push(createActivity.mutateAsync({ data: { sessionId, category: "food", activityType: "beef_meal", value: Number(food) } }));
+      await Promise.all(promises);
+      setTransport(""); setElectricity(""); setFood("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey({ sessionId }) }),
+        queryClient.invalidateQueries({ queryKey: getGetActivitySummaryQueryKey({ sessionId, days: 7 }) }),
+        queryClient.invalidateQueries({ queryKey: getGetActivityStreakQueryKey({ sessionId }) }),
+      ]);
+      toast({ title: "Record logged", description: "Successfully logged emissions." });
+    } catch {
+      toast({ title: "Submission failed", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleSaveGoal = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,216 +126,44 @@ export default function Dashboard() {
     }
   };
 
-  const totalCo2 = summary?.totalCo2 ?? 0;
-  const dailyAverage = summary?.dailyAverage ?? 0;
-  const treeEquivalent = summary?.treeEquivalent ?? 0;
-  const flightHoursEquivalent = summary?.flightHoursEquivalent ?? 0;
-
-  const handleAddRecord = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sessionId) return;
-
-    if (!transport && !electricity && !food) {
-      toast({
-        title: "Input error",
-        description: "Please enter at least one value to calculate emissions.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const promises: Promise<unknown>[] = [];
-
-      if (transport && Number(transport) > 0) {
-        promises.push(
-          createActivity.mutateAsync({
-            data: { sessionId, category: "transport", activityType: "car_km", value: Number(transport) }
-          })
-        );
-      }
-      if (electricity && Number(electricity) > 0) {
-        promises.push(
-          createActivity.mutateAsync({
-            data: { sessionId, category: "energy", activityType: "electricity_kwh", value: Number(electricity) }
-          })
-        );
-      }
-      if (food && Number(food) > 0) {
-        promises.push(
-          createActivity.mutateAsync({
-            data: { sessionId, category: "food", activityType: "beef_meal", value: Number(food) }
-          })
-        );
-      }
-
-      await Promise.all(promises);
-
-      setTransport("");
-      setElectricity("");
-      setFood("");
-
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey({ sessionId }) }),
-        queryClient.invalidateQueries({ queryKey: getGetActivitySummaryQueryKey({ sessionId, days: 7 }) }),
-        queryClient.invalidateQueries({ queryKey: getGetActivityStreakQueryKey({ sessionId }) }),
-      ]);
-
-      toast({
-        title: "Record logged",
-        description: "Successfully logged emissions."
-      });
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Submission failed",
-        description: "Could not log emission record to the database.",
-        variant: "destructive"
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteRecord = async (id: number) => {
-    try {
-      await deleteActivity.mutateAsync({ id });
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey({ sessionId: sessionId! }) }),
-        queryClient.invalidateQueries({ queryKey: getGetActivitySummaryQueryKey({ sessionId: sessionId!, days: 7 }) }),
-        queryClient.invalidateQueries({ queryKey: getGetActivityStreakQueryKey({ sessionId: sessionId! }) }),
-      ]);
-      toast({
-        title: "Record deleted",
-        description: "The emission record was successfully deleted."
-      });
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Delete failed",
-        description: "Failed to remove the emission record.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const chartDataList = [...activities].reverse();
-
-  const chartLabels = chartDataList.map((record) => {
-    const d = new Date(record.loggedAt);
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit" });
-  });
-
-  const chartData = {
-    labels: chartLabels.length > 0 ? chartLabels : ["No logs"],
-    datasets: [
-      {
-        label: "Total Emissions (kg CO₂)",
-        data: chartDataList.length > 0 ? chartDataList.map((r) => r.co2Amount) : [0],
-        borderColor: "rgb(20, 110, 80)",
-        backgroundColor: (context: ScriptableContext<"line">) => {
-          const chart = context.chart;
-          const { ctx, chartArea } = chart;
-          if (!chartArea) return "rgba(20, 110, 80, 0.1)";
-          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          gradient.addColorStop(0, "rgba(20, 110, 80, 0.4)");
-          gradient.addColorStop(1, "rgba(20, 110, 80, 0.0)");
-          return gradient;
-        },
-        fill: true,
-        tension: 0.35,
-        borderWidth: 3,
-        pointBackgroundColor: "rgb(20, 110, 80)",
-        pointHoverRadius: 7,
-        pointHoverBackgroundColor: "#ff7a00"
-      }
-    ]
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      },
-      tooltip: {
-        padding: 12,
-        backgroundColor: "rgba(10, 25, 20, 0.95)",
-        titleFont: { size: 13, weight: "bold" as const },
-        bodyFont: { size: 12 },
-        callbacks: {
-          label: (context: any) => `Emissions: ${context.raw.toFixed(2)} kg CO₂`
-        }
-      }
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { color: "rgba(120, 120, 120, 0.8)", font: { size: 10 } }
-      },
-      y: {
-        grid: { color: "rgba(200, 200, 200, 0.15)" },
-        ticks: { color: "rgba(120, 120, 120, 0.8)", font: { size: 10 } }
-      }
-    }
-  };
-
   if (loading && activities.length === 0) {
     return (
-      <div className="p-6 md:p-8 space-y-6 max-w-6xl mx-auto">
+      <div className="p-6 md:p-8 space-y-6 max-w-5xl mx-auto">
         <Skeleton className="h-10 w-48 mb-8" />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28" />)}
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          <Skeleton className="h-[400px] md:col-span-1" />
-          <Skeleton className="h-[400px] md:col-span-2" />
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-[380px]" />
+          <Skeleton className="h-[380px]" />
         </div>
       </div>
     );
   }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 15 },
-    show: { opacity: 1, y: 0 }
-  };
+  const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.09 } } };
+  const itemVariants = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0 } };
 
   return (
-    <motion.div
-      className="p-6 md:p-8 space-y-8 max-w-6xl mx-auto"
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-    >
-      <div className="flex justify-between items-center">
-        <div>
-          <motion.h1 variants={itemVariants} className="text-3xl font-bold tracking-tight text-foreground bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-            EcoTrace Carbon Tracker
-          </motion.h1>
-          <motion.p variants={itemVariants} className="text-muted-foreground mt-1">
-            Track and offset your carbon footprint using live data.
-          </motion.p>
-        </div>
+    <motion.div className="p-6 md:p-8 space-y-7 max-w-5xl mx-auto" variants={containerVariants} initial="hidden" animate="show">
+      {/* Header */}
+      <div>
+        <motion.h1 variants={itemVariants} className="text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
+          EcoTrace Dashboard
+        </motion.h1>
+        <motion.p variants={itemVariants} className="text-muted-foreground mt-1">
+          Your daily carbon footprint at a glance.
+        </motion.p>
       </div>
 
+      {/* Goal Progress */}
       {goal !== null && (
         <motion.div variants={itemVariants}>
           <Card className={`shadow-md border ${goalExceeded ? "border-red-200 bg-red-50 dark:bg-red-950/20" : "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20"}`}>
             <CardContent className="py-4 px-5 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-foreground flex items-center gap-1.5">
-                  <span className="text-base">{goalExceeded ? "⚠️" : "🎯"}</span>
+                <span className="font-medium flex items-center gap-1.5">
+                  <span>{goalExceeded ? "⚠️" : "🎯"}</span>
                   Today's Goal Progress
                 </span>
                 <span className={`font-semibold ${goalExceeded ? "text-red-600" : "text-emerald-700"}`}>
@@ -355,11 +177,9 @@ export default function Dashboard() {
                 />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{goalProgress.toFixed(0)}% of daily target used</span>
+                <span>{goalProgress.toFixed(0)}% used today</span>
                 <span className={goalExceeded ? "text-red-500 font-medium" : "text-emerald-600"}>
-                  {goalExceeded
-                    ? `${(todayCo2 - goal).toFixed(2)} kg over limit`
-                    : `${(goal - todayCo2).toFixed(2)} kg remaining`}
+                  {goalExceeded ? `${(todayCo2 - goal).toFixed(2)} kg over` : `${(goal - todayCo2).toFixed(2)} kg remaining`}
                 </span>
               </div>
             </CardContent>
@@ -367,36 +187,30 @@ export default function Dashboard() {
         </motion.div>
       )}
 
+      {/* Streak */}
       <motion.div variants={itemVariants}>
         <Card className="border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-900 shadow-sm">
           <CardContent className="py-3 px-5 flex items-center gap-4">
-            <Flame className={`h-7 w-7 flex-shrink-0 ${(streak?.currentStreak ?? 0) > 0 ? "text-orange-500" : "text-muted-foreground"}`} />
+            <Flame className={`h-7 w-7 shrink-0 ${(streak?.currentStreak ?? 0) > 0 ? "text-orange-500" : "text-muted-foreground"}`} />
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-bold text-orange-600 dark:text-orange-400">{streak?.currentStreak ?? 0}</span>
-              <span className="text-sm text-orange-700 dark:text-orange-300 font-medium">
-                {(streak?.currentStreak ?? 0) === 1 ? "day streak" : "day streak"}
-              </span>
+              <span className="text-sm text-orange-700 dark:text-orange-300 font-medium">day streak</span>
             </div>
             <div className="h-5 w-px bg-orange-200 dark:bg-orange-800 mx-1" />
-            <div className="text-xs text-orange-700/70 dark:text-orange-400/70">
-              Best: <span className="font-semibold">{streak?.longestStreak ?? 0}</span>
-            </div>
-            <div className="text-xs text-orange-700/70 dark:text-orange-400/70">
-              Total days logged: <span className="font-semibold">{streak?.totalDays ?? 0}</span>
-            </div>
-            {(streak?.currentStreak ?? 0) === 0 && (
-              <span className="ml-auto text-xs text-muted-foreground italic">Log an activity today to start your streak!</span>
-            )}
-            {(streak?.currentStreak ?? 0) > 0 && (
-              <span className="ml-auto text-xs text-orange-600 font-medium">🔥 Keep it up!</span>
-            )}
+            <span className="text-xs text-orange-700/70">Best: <b>{streak?.longestStreak ?? 0}</b></span>
+            <span className="text-xs text-orange-700/70">Total: <b>{streak?.totalDays ?? 0}</b> days</span>
+            {(streak?.currentStreak ?? 0) === 0
+              ? <span className="ml-auto text-xs text-muted-foreground italic">Log today to start your streak!</span>
+              : <span className="ml-auto text-xs text-orange-600 font-medium">🔥 Keep it up!</span>
+            }
           </CardContent>
         </Card>
       </motion.div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {/* Metric cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <motion.div variants={itemVariants}>
-          <Card className="bg-gradient-to-br from-emerald-700 to-teal-800 text-white border-none shadow-md overflow-hidden relative">
+          <Card className="bg-gradient-to-br from-emerald-700 to-teal-800 text-white border-none shadow-md overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium opacity-90">Total Footprint</CardTitle>
               <Activity className="h-5 w-5 opacity-80" />
@@ -407,223 +221,168 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </motion.div>
-
         <motion.div variants={itemVariants}>
-          <Card className="shadow-md border border-border/60 hover:shadow-lg transition-shadow">
+          <Card className="shadow-md border border-border/60">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">Daily Average</CardTitle>
               <Globe className="h-5 w-5 text-teal-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{dailyAverage.toFixed(1)} kg</div>
-              <p className="text-xs text-muted-foreground mt-1">based on a 7-day period</p>
+              <p className="text-xs text-muted-foreground mt-1">7-day period</p>
             </CardContent>
           </Card>
         </motion.div>
-
         <motion.div variants={itemVariants}>
-          <Card className="shadow-md border border-border/60 hover:shadow-lg transition-shadow">
+          <Card className="shadow-md border border-border/60">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">Tree Equivalent</CardTitle>
               <TreePine className="h-5 w-5 text-emerald-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{treeEquivalent.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground mt-1">trees required to absorb</p>
+              <p className="text-xs text-muted-foreground mt-1">trees to absorb</p>
             </CardContent>
           </Card>
         </motion.div>
-
         <motion.div variants={itemVariants}>
-          <Card className="shadow-md border border-border/60 hover:shadow-lg transition-shadow">
+          <Card className="shadow-md border border-border/60">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">Flight Equivalent</CardTitle>
               <Plane className="h-5 w-5 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{flightHoursEquivalent.toFixed(1)} hr</div>
-              <p className="text-xs text-muted-foreground mt-1">commercial flight time</p>
+              <p className="text-xs text-muted-foreground mt-1">commercial flight</p>
             </CardContent>
           </Card>
         </motion.div>
-
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <motion.div variants={itemVariants} className="md:col-span-1">
-          <Card className="h-full shadow-md border-border/60 backdrop-blur-md bg-card/90">
+      {/* Quick log + Quick actions */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Quick log form */}
+        <motion.div variants={itemVariants}>
+          <Card className="h-full shadow-md border-border/60 bg-card/90">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PlusCircle className="h-5 w-5 text-emerald-600" />
-                Log Emissions
+                Quick Log
               </CardTitle>
-              <CardDescription>Enter values in the categories below.</CardDescription>
+              <CardDescription>Enter values to record today's emissions.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAddRecord} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="transport" className="flex items-center gap-1.5 font-medium text-sm">
-                    <Car className="h-4 w-4 text-emerald-600" />
-                    Transport (km)
+            <CardContent className="space-y-5">
+              <form onSubmit={handleAddRecord} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="transport" className="flex items-center gap-1.5 text-sm font-medium">
+                    <Car className="h-4 w-4 text-emerald-600" /> Transport (km)
                   </Label>
-                  <Input
-                    id="transport"
-                    type="number"
-                    step="any"
-                    placeholder="e.g. 15 km driven"
-                    value={transport}
-                    onChange={(e) => setTransport(e.target.value)}
-                    className="w-full focus-visible:ring-emerald-600"
-                    disabled={submitting}
-                  />
-                  <p className="text-[10px] text-muted-foreground">0.21 kg CO₂ per km</p>
+                  <Input id="transport" type="number" step="any" placeholder="e.g. 15 km driven" value={transport}
+                    onChange={(e) => setTransport(e.target.value)} disabled={submitting} className="focus-visible:ring-emerald-600" />
+                  <p className="text-[10px] text-muted-foreground">0.21 kg CO₂/km</p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="electricity" className="flex items-center gap-1.5 font-medium text-sm">
-                    <Zap className="h-4 w-4 text-yellow-500" />
-                    Electricity (kWh)
+                <div className="space-y-1.5">
+                  <Label htmlFor="electricity" className="flex items-center gap-1.5 text-sm font-medium">
+                    <Zap className="h-4 w-4 text-yellow-500" /> Electricity (kWh)
                   </Label>
-                  <Input
-                    id="electricity"
-                    type="number"
-                    step="any"
-                    placeholder="e.g. 8 kWh used"
-                    value={electricity}
-                    onChange={(e) => setElectricity(e.target.value)}
-                    className="w-full focus-visible:ring-emerald-600"
-                    disabled={submitting}
-                  />
-                  <p className="text-[10px] text-muted-foreground">0.233 kg CO₂ per kWh</p>
+                  <Input id="electricity" type="number" step="any" placeholder="e.g. 8 kWh used" value={electricity}
+                    onChange={(e) => setElectricity(e.target.value)} disabled={submitting} className="focus-visible:ring-emerald-600" />
+                  <p className="text-[10px] text-muted-foreground">0.233 kg CO₂/kWh</p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="food" className="flex items-center gap-1.5 font-medium text-sm">
-                    <Utensils className="h-4 w-4 text-orange-500" />
-                    Food (meat/processed meals)
+                <div className="space-y-1.5">
+                  <Label htmlFor="food" className="flex items-center gap-1.5 text-sm font-medium">
+                    <Utensils className="h-4 w-4 text-orange-500" /> Food (meat meals)
                   </Label>
-                  <Input
-                    id="food"
-                    type="number"
-                    step="1"
-                    placeholder="e.g. 2 meat meals"
-                    value={food}
-                    onChange={(e) => setFood(e.target.value)}
-                    className="w-full focus-visible:ring-emerald-600"
-                    disabled={submitting}
-                  />
-                  <p className="text-[10px] text-muted-foreground">6.61 kg CO₂ per meal</p>
+                  <Input id="food" type="number" step="1" placeholder="e.g. 2 meat meals" value={food}
+                    onChange={(e) => setFood(e.target.value)} disabled={submitting} className="focus-visible:ring-emerald-600" />
+                  <p className="text-[10px] text-muted-foreground">6.61 kg CO₂/meal</p>
                 </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-medium shadow-md transition-colors"
-                  disabled={submitting}
-                >
-                  {submitting ? "Logging..." : "Add Record"}
+                <Button type="submit" className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-medium" disabled={submitting}>
+                  {submitting ? "Logging…" : "Add Record"}
                 </Button>
               </form>
 
-              <div className="mt-5 pt-5 border-t border-border/60">
+              <div className="pt-4 border-t border-border/60">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Daily CO₂ Goal</p>
                 <form onSubmit={handleSaveGoal} className="flex gap-2">
-                  <Input
-                    type="number"
-                    step="any"
-                    min="0.1"
+                  <Input type="number" step="any" min="0.1"
                     placeholder={goal !== null ? `Current: ${goal} kg` : "e.g. 5 kg"}
-                    value={goalInput}
-                    onChange={(e) => setGoalInput(e.target.value)}
-                    className="flex-1 focus-visible:ring-emerald-600 text-sm"
-                    disabled={savingGoal}
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="bg-emerald-700 hover:bg-emerald-800 text-white"
-                    disabled={savingGoal || !goalInput}
-                  >
-                    {savingGoal ? "..." : "Set"}
+                    value={goalInput} onChange={(e) => setGoalInput(e.target.value)}
+                    className="flex-1 focus-visible:ring-emerald-600 text-sm" disabled={savingGoal} />
+                  <Button type="submit" size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white"
+                    disabled={savingGoal || !goalInput}>
+                    {savingGoal ? "…" : "Set"}
                   </Button>
                 </form>
-                {goal !== null && (
-                  <p className="text-[10px] text-muted-foreground mt-1.5">Target: {goal} kg CO₂ per day</p>
-                )}
+                {goal !== null && <p className="text-[10px] text-muted-foreground mt-1.5">Target: {goal} kg CO₂/day</p>}
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        <motion.div variants={itemVariants} className="md:col-span-2">
-          <Card className="h-full shadow-md border-border/60">
-            <CardHeader>
-              <CardTitle>Emission Trends</CardTitle>
-              <CardDescription>Live trend line plotting carbon output per log (hover to inspect values)</CardDescription>
-            </CardHeader>
-            <CardContent className="h-[320px] pb-6">
-              <div className="w-full h-full">
-                <Line data={chartData} options={chartOptions} />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Quick action links */}
+        <motion.div variants={itemVariants} className="flex flex-col gap-4">
+          <Link href="/log">
+            <Card className="shadow-sm border-border/60 hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group">
+              <CardContent className="py-5 px-5 flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                  <PlusCircle className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">Log Detailed Activity</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Choose transport, food, energy or shopping</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/bank">
+            <Card className="shadow-sm border-border/60 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group">
+              <CardContent className="py-5 px-5 flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                  <CreditCard className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">Import Bank Transactions</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Auto-detect carbon from purchases</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-blue-600 transition-colors" />
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/insights">
+            <Card className="shadow-sm border-border/60 hover:shadow-md hover:border-purple-300 transition-all cursor-pointer group">
+              <CardContent className="py-5 px-5 flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+                  <BarChart3 className="h-5 w-5 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">View Insights & Heatmap</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Charts, trends and 90-day activity heatmap</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-purple-600 transition-colors" />
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/challenges">
+            <Card className="shadow-sm border-border/60 hover:shadow-md hover:border-amber-300 transition-all cursor-pointer group">
+              <CardContent className="py-5 px-5 flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                  <span className="text-xl">🏆</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-foreground">Join a Challenge</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Compete and commit to eco-goals</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-amber-600 transition-colors" />
+              </CardContent>
+            </Card>
+          </Link>
         </motion.div>
       </div>
-
-      <motion.div variants={itemVariants}>
-        <Card className="shadow-md border-border/60">
-          <CardHeader>
-            <CardTitle>Logged Records</CardTitle>
-            <CardDescription>Complete list of emissions stored in your PostgreSQL database.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {activities.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground text-sm border-2 border-dashed rounded-lg bg-muted/20">
-                No logs recorded yet. Start by entering values in the form above!
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left text-muted-foreground">
-                  <thead className="text-xs text-foreground uppercase border-b bg-muted/30">
-                    <tr>
-                      <th scope="col" className="px-4 py-3 font-semibold">Logged At</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">Category</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">Activity</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">Value</th>
-                      <th scope="col" className="px-4 py-3 font-semibold">CO₂</th>
-                      <th scope="col" className="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activities.map((record) => (
-                      <tr key={record.id} className="bg-background border-b hover:bg-muted/10 transition-colors">
-                        <td className="px-4 py-3 text-foreground font-medium">
-                          {new Date(record.loggedAt).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 capitalize">{record.category}</td>
-                        <td className="px-4 py-3">{record.activityLabel}</td>
-                        <td className="px-4 py-3">{record.value} {record.unit}</td>
-                        <td className="px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-500">
-                          {record.co2Amount.toFixed(2)} kg
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                            onClick={() => handleDeleteRecord(record.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
     </motion.div>
   );
 }
