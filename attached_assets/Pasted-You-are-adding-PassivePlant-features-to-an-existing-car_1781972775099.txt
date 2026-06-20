@@ -1,0 +1,266 @@
+You are adding "PassivePlant" features to an existing carbon footprint app that already has CarbonSwap and AutoCarbon Null. PassivePlant makes your PHONE USAGE automatically plant trees. User uses phone normally, trees grow in background. Zero effort.
+
+## GOAL
+Add PassivePlant phone-tracking + auto-tree-planting to existing app WITHOUT breaking current functionality. Combine with existing CarbonSwap (coins) and AutoCarbon Null (AI offsets).
+
+## DATABASE CHANGES (Add These Tables)
+
+Create these NEW tables in existing PostgreSQL:
+
+1. phone_usage:
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+   usage_date DATE NOT NULL,
+   screen_time_hours DECIMAL DEFAULT 0,
+   app_usage_hours DECIMAL DEFAULT 0,
+   battery_drain_mah DECIMAL DEFAULT 0,
+   co2_kg DECIMAL DEFAULT 0, -- Calculated: 1 hour screen = 0.01kg CO₂
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+2. tree_plants:
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+   plant_date DATE NOT NULL,
+   trees_planted INTEGER DEFAULT 0,
+   co2_offset_kg DECIMAL DEFAULT 0, -- 1 tree = 0.01kg CO₂ captured/year
+   location TEXT, -- Forest location (e.g., "Kerala Forest")
+   project_name TEXT, -- "Plant 1000 Trees Initiative"
+   is_verified BOOLEAN DEFAULT false,
+   blockchain_tx_id TEXT, -- Polygon transaction ID
+   photo_url TEXT, -- Tree growth photo
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+3. tree_plant_donations:
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+   tree_plant_id UUID REFERENCES tree_plants(id) ON DELETE CASCADE,
+   screen_time_hours DECIMAL,
+   trees_earned INTEGER,
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+4. passive_rewards:
+   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+   reward_type TEXT, -- 'tree', 'coin', 'discount'
+   reward_value DECIMAL, -- Number of trees/coins/discount ₹
+   reward_date DATE,
+   is_claimed BOOLEAN DEFAULT false,
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+Add indexes for: user_id in all tables, usage_date in phone_usage, plant_date in tree_plants.
+
+## BACKEND API ENDPOINTS (Add to Your Express App)
+
+Add these NEW routes:
+
+1. POST /api/phone/track - Track phone usage (called by mobile app)
+   - Input: { screen_time_hours, app_usage_hours, battery_drain_mah }
+   - Logic:
+     • CO₂ calculation: screen_time_hours * 0.01kg + app_usage_hours * 0.005kg
+     • Create phone_usage record
+     • Auto-earn trees: 1 tree per 10kg CO₂
+     • trees_earned = co2_kg / 10
+     • If trees_earned >= 1:
+       - Create tree_plant record (trees_planted: floor(trees_earned))
+       - Create tree_plant_donation record
+       - Auto-add to eco_wallets.coin_balance += trees_earned * 10 (1 tree = 10 coins)
+   - Return: { success: true, co2_kg: 0.15, trees_earned: 0.015, total_trees: 15 }
+
+2. GET /api/phone/usage - Get phone usage summary
+   - Input: { user_id, period: 'week' | 'month' }
+   - Logic:
+     • Sum phone_usage for period
+     • total_screen_hours, total_app_hours, total_co2_kg
+     • total_trees_planted (from tree_plants)
+   - Return: { screen_hours: 120, app_hours: 80, co2_kg: 1.2, trees_planted: 12 }
+
+3. GET /api/trees - Get user's planted trees
+   - Logic:
+     • Get tree_plants for user
+     • Include: location, project_name, trees_planted, photo_url, is_verified
+   - Return: [{ plant_date, trees_planted: 10, location: 'Kerala Forest', photo_url: 'URL' }]
+
+4. POST /api/trees/plant - Auto-plant trees (manual trigger or auto)
+   - Input: { co2_kg, project_name, location }
+   - Logic:
+     • trees_to_plant = co2_kg / 0.01 (1 tree = 0.01kg CO₂/year)
+     • Cost: ₹5 per tree (₹50 for 10 trees)
+     • Auto-pay from eco_wallets.money_balance OR subscription
+     • Create tree_plant record
+     • Generate blockchain transaction (Polygon)
+     • Upload photo (tree growth)
+     • Set is_verified = true
+   - Return: { success: true, trees_planted: 10, cost: 50, blockchain_tx: "TX_ID" }
+
+5. GET /api/trees/map - Get live tree map
+   - Logic:
+     • Get all tree_plants
+     • Group by location
+     • Return: [{ location, total_trees: 160, co2_offset: 1.6kg }]
+   - Return: [{ location: 'Kerala Forest', trees: 160, co2: 1.6 }, { location: 'Tamil Nadu', trees: 80, co2: 0.8 }]
+
+6. POST /api/rewards/claim - Claim passive rewards
+   - Input: { reward_id }
+   - Logic:
+     • Get reward (type: 'tree', 'coin', 'discount')
+     • If type = 'tree': Create tree_plant
+     • If type = 'coin': Add to eco_wallets.coin_balance
+     • If type = 'discount': Generate discount coupon
+     • Set is_claimed = true
+   - Return: { success: true, reward_type: 'tree', reward_value: 5 }
+
+7. GET /api/passive/summary - Get passive summary (combines all passive features)
+   - Logic:
+     • Phone usage → trees: 12 trees
+     • CarbonSwap coins: 45 coins
+     • AutoCarbon Null: 1.6t CO₂ offset
+     • Total passive value: ₹XXX
+   - Return: { phone_trees: 12, swap_coins: 45, null_co2: 1600, total_value: 1500 }
+
+8. POST /api/phone/subscribe - Subscribe to PassivePlant Premium
+   - Input: { monthly_cost }
+   - Logic:
+     • monthly_cost: ₹99/month (Premium)
+     • Benefits: 2x trees (1 tree per 5kg CO₂), exclusive forest locations
+     • Create subscription record
+     • Auto-enable 2x multiplier
+   - Return: { success: true, monthly_cost: 99, benefit: '2x trees' }
+
+## MOBILE APP CHANGES (React Native)
+
+Add these to your existing React Native app:
+
+### 1. Phone Usage Tracker (Background Service)
+
+```javascript
+// mobile/src/services/PhoneUsageTracker.js
+
+import { DeviceEventEmitter } from 'react-native';
+import api from '../services/api';
+
+class PhoneUsageTracker {
+  constructor() {
+    this.screenTime = 0;
+    this.appUsage = {};
+    this.batteryDrain = 0;
+    this.startTracking();
+  }
+
+  startTracking() {
+    // Track screen on/off
+    DeviceEventEmitter.addListener('screenOn', () => {
+      this.screenStartTime = Date.now();
+    });
+
+    DeviceEventEmitter.addListener('screenOff', () => {
+      const screenTime = (Date.now() - this.screenStartTime) / 1000 / 60 / 60; // hours
+      this.screenTime += screenTime;
+      this.submitUsage();
+    });
+
+    // Track app usage
+    DeviceEventEmitter.addListener('appOpen', (appName) => {
+      this.appStartTime = { app: appName, time: Date.now() };
+    });
+
+    DeviceEventEmitter.addListener('appClose', (appName) => {
+      const appTime = (Date.now() - this.appStartTime.time) / 1000 / 60 / 60;
+      this.appUsage[appName] = this.appUsage[appName] || 0;
+      this.appUsage[appName] += appTime;
+      this.submitUsage();
+    });
+
+    // Track battery drain
+    DeviceEventEmitter.addListener('batteryChange', (mAh) => {
+      this.batteryDrain += mAh;
+    });
+
+    // Submit usage every hour
+    setInterval(() => this.submitUsage(), 60 * 60 * 1000);
+  }
+
+  submitUsage() {
+    const screenTimeHours = this.screenTime;
+    const appUsageHours = Object.values(this.appUsage).reduce((a, b) => a + b, 0);
+    const batteryDrainMah = this.batteryDrain;
+
+    // Calculate CO₂
+    const co2Kg = screenTimeHours * 0.01 + appUsageHours * 0.005;
+
+    // Submit to API
+    api.post('/api/phone/track', {
+      screen_time_hours: screenTimeHours,
+      app_usage_hours: appUsageHours,
+      battery_drain_mah: batteryDrainMah
+    });
+
+    // Reset
+    this.screenTime = 0;
+    this.appUsage = {};
+    this.batteryDrain = 0;
+  }
+}
+
+export default new PhoneUsageTracker();
+```
+
+### 2. PassivePlant Page (New Screen)
+
+```javascript
+// mobile/src/pages/PassivePlantPage.js
+
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Image, TouchableOpacity } from 'react-native';
+import api from '../services/api';
+
+export default function PassivePlantPage() {
+  const [usage, setUsage] = useState(null);
+  const [trees, setTrees] = useState([]);
+  const [map, setMap] = useState([]);
+
+  useEffect(() => {
+    fetchUsage();
+    fetchTrees();
+    fetchMap();
+  }, []);
+
+  const fetchUsage = async () => {
+    const data = await api.get('/api/phone/usage?period=month');
+    setUsage(data);
+  };
+
+  const fetchTrees = async () => {
+    const data = await api.get('/api/trees');
+    setTrees(data);
+  };
+
+  const fetchMap = async () => {
+    const data = await api.get('/api/trees/map');
+    setMap(data);
+  };
+
+  return (
+    <ScrollView style={{ padding: 20 }}>
+      <Text style={{ fontSize: 32, fontWeight: 'bold', marginBottom: 20 }}>
+        🌳 PassivePlant
+      </Text>
+
+      <Text style={{ fontSize: 16, marginBottom: 10 }}>
+        Your phone usage automatically plants trees. Zero effort.
+      </Text>
+
+      {/* Usage Summary */}
+      <View style={{ backgroundColor: '#e8f5e9', padding: 16, borderRadius: 8, marginBottom: 20 }}>
+        <Text style={{ fontSize: 16, fontWeight: 'bold' }}>This Month</Text>
+        <Text>Screen time: {usage?.screen_hours} hours</Text>
+        <Text>App usage: {usage?.app_hours} hours</Text>
+        <Text>CO₂ created: {usage?.co2_kg} kg</Text>
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#2e7d32', marginTop: 10 }}>
+          Trees planted: {usage?.trees_planted} 🌳
+        </Text>
+      </View>
+
+      {/* Planted Trees */}
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 10 }}>Your Trees</Text>
+      {trees.map((tree, index) => (
+        <View style={{ border

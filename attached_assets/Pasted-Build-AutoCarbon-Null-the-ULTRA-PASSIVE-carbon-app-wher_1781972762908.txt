@@ -1,0 +1,198 @@
+Build "AutoCarbon Null" - the ULTRA-PASSIVE carbon app where AI predicts your NEXT month's carbon footprint and AUTO-OFFSETS it BEFORE you create it. You create carbon normally, AI nullifies it automatically. Zero effort, zero guilt.
+
+## CORE CONCEPT
+1. AI predicts next month's carbon (based on history + habits)
+2. Auto-offsets TODAY (plants trees, renewable energy)
+3. Next month: You create carbon normally (drive, fly, eat)
+4. Carbon already NULLIFIED (AI did it in advance)
+5. You: Zero guilt, zero effort forever
+
+## UNIQUE FEATURES TO BUILD
+
+### 1. AI Carbon Predictor
+- Input: User's past 12 months carbon data (from tracker)
+- AI Model: TensorFlow (time-series prediction)
+- Predicts: Next month's CO₂ (kg)
+- Accuracy: 92% (based on historical patterns)
+- Example:
+  • Past avg: 1.5t/month
+  • Predicted: 1.6t/month (increased flights)
+  • Auto-offset today: 1.6t
+
+### 2. Auto-Pre-Offset System
+- Offset methods:
+  • Tree planting: 1t CO₂ = ₹500 (1 tree per 0.01t)
+  • Renewable energy: 1t CO₂ = ₹800 (1 kWh solar)
+  • Carbon capture: 1t CO₂ = ₹1000 (industrial capture)
+- Auto-selects cheapest method (AI optimization)
+- Auto-purchases offsets TODAY (before carbon created)
+- Blockchain verification (immutable offset record)
+
+### 3. Zero Guilt Dashboard
+- Shows: "Your carbon is already NULLIFIED ✓"
+- Next month prediction: 1.6t CO₂
+- Already offset: 1.6t CO₂ ✓
+- Status: NULLIFIED (green)
+- Message: "Drive, fly, eat normally. AI handled it."
+
+### 4. Auto-Recurring Subscription
+- Monthly subscription: ₹999/month
+- Covers: 1.5t CO₂ offsets (average user)
+- Auto-renews every month
+- Auto-predicts + auto-offsets (no user action)
+- Cancel anytime (1-tap)
+
+### 5. Real-Time Offset Tracker
+- Live map: Trees planted with your offsets
+- Shows: Location, number of trees, CO₂ captured
+- Example: "Your 160 trees in Kerala forest (1.6t CO₂)"
+- Updates: Monthly tree growth photos
+
+### 6. Carbon Null Certificate
+- NFT certificate: "AutoCarbon Null Certified"
+- Shows: Month offset, CO₂ nullified, trees planted
+- Minted on blockchain (Polygon)
+- Shareable: "I'm AutoCarbon Null Certified ✓"
+
+### 7. Community Null Leaderboard
+- Top nullifiers: "100t CO₂ nullified this month"
+- Neighborhood stats: "T. Nagar: 500t nullified"
+- Auto-compete: Zero effort (AI does everything)
+- Prizes: ₹10,000 for top nullifier
+
+### 8. Auto-Insurance Integration
+- Car insurance: Pay partially with offset credits
+- Flight insurance:carbon-null coverage included
+- Auto-adds: Every purchase includes carbon null
+
+## DATABASE TABLES
+
+1. carbon_predictions:
+   id UUID PRIMARY KEY,
+   user_id UUID REFERENCES users(id),
+   predicted_month DATE,
+   predicted_co2_kg DECIMAL,
+   prediction_accuracy DECIMAL, -- 92%
+   created_at TIMESTAMP
+
+2. auto_offsets:
+   id UUID PRIMARY KEY,
+   user_id UUID REFERENCES users(id),
+   offset_month DATE,
+   co2_offset_kg DECIMAL,
+   offset_method TEXT, -- 'trees', 'renewable', 'capture'
+   cost DECIMAL, -- ₹500
+   blockchain_tx_id TEXT, -- Polygon transaction
+   is_verified BOOLEAN DEFAULT false,
+   created_at TIMESTAMP
+
+3. null_certificates:
+   id UUID PRIMARY KEY,
+   user_id UUID REFERENCES users(id),
+   month DATE,
+   co2_nullified_kg DECIMAL,
+   trees_planted INTEGER,
+   nft_token_id TEXT, -- Blockchain NFT ID
+   issued_at TIMESTAMP
+
+4. subscriptions:
+   id UUID PRIMARY KEY,
+   user_id UUID REFERENCES users(id),
+   monthly_cost DECIMAL DEFAULT 999,
+   co2_covered_kg DECIMAL DEFAULT 1500, -- 1.5t
+   status TEXT DEFAULT 'active', -- 'active', 'cancelled'
+   started_at TIMESTAMP,
+   cancelled_at TIMESTAMP
+
+5. community_stats:
+   id UUID PRIMARY KEY,
+   neighborhood TEXT,
+   total_nullified_kg DECIMAL,
+   total_users INTEGER,
+   updated_at TIMESTAMP
+
+## API ENDPOINTS
+
+POST /api/predict - AI predict next month's carbon
+- Input: { user_id }
+- Returns: { predicted_co2_kg: 1600, accuracy: 92% }
+
+POST /api/offset/auto - Auto-offset predicted carbon
+- Input: { predicted_co2_kg, offset_method }
+- Returns: { success: true, cost: 500, blockchain_tx: "TX_ID" }
+
+GET /api/null/status - Get nullification status
+- Returns: { status: 'NULLIFIED', co2_nullified: 1600, co2_predicted: 1600 }
+
+POST /api/subscribe - Subscribe to AutoCarbon Null
+- Input: { monthly_cost: 999, co2_covered: 1500 }
+- Returns: { success: true, message: 'Subscribed' }
+
+GET /api/offsets - List all user's offsets
+- Returns: [{ month, co2_offset, method, blockchain_tx, verified }]
+
+POST /api/certificate/mint - Mint NFT certificate
+- Input: { month, co2_nullified, trees_planted }
+- Returns: { success: true, nft_token_id: "NFT_ID" }
+
+GET /api/community/leaderboard - Community leaderboard
+- Returns: [{ neighborhood, total_nullified, users }]
+
+## FRONTEND PAGES (3 Tabs)
+
+1. Home Tab:
+   • Status: NULLIFIED ✓ (green, huge)
+   • Next month prediction: 1.6t CO₂
+   • Already offset: 1.6t CO₂ ✓
+   • Message: "Drive, fly, eat normally. AI handled it."
+   • [Subscribe] ₹999/month (1-tap)
+
+2. Tracker Tab:
+   • Live offset map (trees planted)
+   • Shows: Location, count, CO₂ captured
+   • "Your 160 trees in Kerala (1.6t CO₂)"
+   • Monthly tree growth photos
+
+3. Settings Tab:
+   • Subscription settings (cancel/update)
+   • Offset method preference (trees/renewable/capture)
+   • Auto-payment settings
+   • NFT certificate (view/share)
+
+## USER JOURNEY
+
+Day 1: 3 minutes setup
+1. Install app → 30s
+2. Tap "Connect History" → 1-tap (pastes past 12 months data)
+3. Tap "Subscribe to AutoCarbon Null" → 1-tap (₹999/month)
+4. Done!
+
+Day 2-30: ZERO effort
+• AI predicts next month: 1.6t CO₂
+• Auto-offsets TODAY: 1.6t trees planted
+• Blockchain verified ✓
+• You: Drive, fly, eat normally
+• Carbon: Already NULLIFIED
+
+Day 30: Check Results
+• Nullified: 1.6t CO₂ (passive)
+• Trees planted: 160 trees
+• Cost: ₹999 (subscription)
+• Guilt: ZERO ✓
+
+You did: 3 minutes of work.
+AI did: Everything.
+Result: Zero guilt, zero effort. ✨
+
+## SUCCESS CRITERIA
+
+✅ 95% of users enable "AutoNull Forever Mode"
+✅ Setup time: 3 minutes max
+✅ 0 daily effort from users (100% passive)
+✅ 1.6t CO₂/month auto-nullified per user
+✅ Zero carbon guilt (already offset)
+✅ ₹999/month subscription (predictable cost)
+✅ AI accuracy: 92% prediction
+✅ Blockchain verified (immutable trust)
+
+Start building AutoCarbon Null NOW - the ULTRA-PASSIVE carbon app where AI NULLIFIES your carbon BEFORE you create it.
