@@ -1,0 +1,191 @@
+Build a premium, immersive, multilingual climate-tech website using a 3D interactive globe as the main navigation system.
+
+========================================
+🎯 CORE GOAL
+========================================
+- Entire website must support:
+  ✅ English
+  ✅ Tamil
+  ✅ Hindi
+
+- User should be able to switch language at ANY time
+- ALL text, buttons, headings, cards, and UI must update instantly
+
+========================================
+🌍 1. MAIN EXPERIENCE (3D GLOBE NAVIGATION)
+========================================
+- Use React + Three.js (react-three-fiber + drei)
+- Render a realistic Earth with lighting and stars background
+- Add a small animated plant on Earth (eco symbol)
+- Add glow atmosphere effect
+
+----------------------------------------
+🌀 ROTATION NAVIGATION (NO SCROLL)
+----------------------------------------
+- Disable normal scrolling
+- User navigates ONLY by rotating globe
+
+ROTATION STATES:
+
+CENTER:
+- Title: "Track Your Carbon. Change Your World."
+
+ROTATE RIGHT:
+- "What is Carbon Footprint?"
+
+ROTATE LEFT:
+- "Why It Matters?"
+
+ROTATE UP:
+- "How Our App Helps"
+
+ROTATE DOWN:
+- "Start Your Journey"
+
+- Detect rotation direction & angle
+- Trigger content changes dynamically
+
+========================================
+🧠 2. CONTENT CARDS SYSTEM
+========================================
+- Show glassmorphism cards around globe
+- Smooth animations using Framer Motion
+- Cards should:
+  - Fade in
+  - Slide
+  - Slight float effect
+
+- Cards must NOT block globe completely
+
+========================================
+✨ 3. GLOBAL HOVER EFFECT (FULL WEBSITE)
+========================================
+- EVERY interactive element should have hover effect:
+  - Buttons → glow + scale
+  - Cards → lift + shadow
+  - Links → underline animation
+  - Icons → pulse or rotate
+
+- Add smooth cursor interaction:
+  - Cursor glow when hovering interactive elements
+  - Cursor enlarges slightly
+
+========================================
+🖱 4. CURSOR-BASED POP MODULE
+========================================
+- When cursor hovers over special hotspot areas:
+  - Show popup mini cards
+  - Example:
+    - Hover on globe region → show fact
+    - Hover on button → show hint
+
+- Popup animation:
+  - Scale + fade
+  - Slight bounce
+
+========================================
+🌐 5. MULTI-LANGUAGE SYSTEM (IMPORTANT)
+========================================
+- Use react-i18next
+- Language switcher at top-right
+
+SUPPORTED:
+- English (default)
+- Tamil
+- Hindi
+
+----------------------------------------
+📁 TRANSLATION STRUCTURE
+----------------------------------------
+/locales/en.json
+/locales/ta.json
+/locales/hi.json
+
+----------------------------------------
+📌 EXAMPLE CONTENT
+----------------------------------------
+
+en.json:
+{
+  "title": "Track Your Carbon",
+  "start": "Start Your Journey",
+  "what": "What is Carbon Footprint?"
+}
+
+ta.json:
+{
+  "title": "உங்கள் கார்பனை கண்காணிக்கவும்",
+  "start": "உங்கள் பயணத்தை தொடங்குங்கள்",
+  "what": "கார்பன் அடையாளம் என்றால் என்ன?"
+}
+
+hi.json:
+{
+  "title": "अपने कार्बन को ट्रैक करें",
+  "start": "अपनी यात्रा शुरू करें",
+  "what": "कार्बन फुटप्रिंट क्या है?"
+}
+
+----------------------------------------
+⚡ LANGUAGE BEHAVIOR
+----------------------------------------
+- Switching language should:
+  - Instantly update ALL UI text
+  - NOT reload page
+  - Preserve current globe position
+
+========================================
+🎨 6. DESIGN SYSTEM
+========================================
+- Theme: Dark eco-tech
+- Colors:
+  - Green glow (#00ff88)
+  - Dark background (#050505)
+  - Glassmorphism cards
+
+- Fonts:
+  - Clean modern sans-serif
+  - Support Tamil + Hindi fonts properly
+
+========================================
+📱 7. RESPONSIVE DESIGN
+========================================
+- Mobile support:
+  - Touch rotation for globe
+  - Swipe gestures
+- Optimize performance
+
+========================================
+🎮 8. MICRO INTERACTIONS
+========================================
+- Smooth globe inertia
+- Subtle camera zoom on section change
+- Ambient background animation (stars moving slowly)
+
+========================================
+🔊 9. OPTIONAL (ADVANCED)
+========================================
+- Add soft nature background sound (toggle button)
+- Add vibration feedback (mobile)
+
+========================================
+🛠 10. TECH STACK
+========================================
+- React
+- Tailwind CSS
+- Framer Motion
+- react-three-fiber + drei
+- react-i18next
+
+========================================
+📦 11. OUTPUT REQUIRED
+========================================
+- Full working code
+- Component-based structure
+- Clean folder architecture
+- Ready to deploy
+
+========================================
+💎 FINAL GOAL
+========================================
+Make it feel like a premium global startup product (Apple / Tesla level UX)

@@ -1,0 +1,51 @@
+{
+  "brand": "EcoTrace",
+  "openApp": "Open App",
+  "dragHint": "Drag to navigate",
+  "langLabel": "Language",
+
+  "center": {
+    "eyebrow": "Carbon Footprint Platform",
+    "title": "Track Your Carbon.",
+    "titleAccent": "Change Your World.",
+    "sub": "The smartest way to measure, reduce, and offset your environmental impact."
+  },
+
+  "right": {
+    "dir": "Challenges →",
+    "label": "What is Carbon Footprint?",
+    "desc": "Every action has a carbon cost — from the food you eat to how you travel. Your footprint measures the total greenhouse gases your lifestyle produces in CO₂ equivalent.",
+    "fact": "The average person emits 4–10 tons of CO₂ per year.",
+    "cta": "Join Challenges"
+  },
+
+  "left": {
+    "dir": "← Insights",
+    "label": "Why It Matters?",
+    "desc": "Rising CO₂ levels drive climate change, extreme weather, and biodiversity loss. Understanding your footprint is the first step toward meaningful, measurable change.",
+    "fact": "1.5°C warming could displace 143 million people by 2050.",
+    "cta": "View Insights"
+  },
+
+  "up": {
+    "dir": "↑ Dashboard",
+    "label": "How Our App Helps",
+    "desc": "Log daily activities, visualise your trends, join community challenges, and unlock AI coaching — designed to help you live lighter on the planet.",
+    "fact": "Users who track daily cut emissions by 23% on average.",
+    "cta": "Go to Dashboard"
+  },
+
+  "down": {
+    "dir": "Rewards ↓",
+    "label": "Start Your Journey",
+    "desc": "Join thousands of eco-conscious users already making a difference. Track, reduce, and earn Eco Coins you can swap, donate, or redeem for green rewards.",
+    "fact": "Every tonne of CO₂ avoided = 100 Eco Coins earned.",
+    "cta": "Earn Rewards"
+  },
+
+  "popup": {
+    "globe": "Drag the globe to explore sections",
+    "openApp": "Jump straight into your dashboard",
+    "lang": "Switch language instantly — no reload"
+  }
+}
