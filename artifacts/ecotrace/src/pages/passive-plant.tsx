@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSessionId } from "@/hooks/use-session";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { TreePine, Smartphone, Coins, MapPin, Gift, Trophy } from "lucide-react";
+import { TreePine, Smartphone, MapPin, Gift, Trophy } from "lucide-react";
+import {
+  ResponsiveContainer, ComposedChart, Bar, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from "recharts";
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -20,6 +24,7 @@ interface Tree { id: number; sessionId: string; plantDate: string; treesPlanted:
 interface MapLoc { location: string; totalTrees: number; totalCo2: number; }
 interface Reward { id: number; rewardType: string; rewardValue: number; rewardDate: string; isClaimed: boolean; }
 interface TrackResult { success: boolean; co2_kg: number; trees_earned: number; trees_planted: number; location: string | null; }
+interface HistoryDay  { date: string; label: string; screenHours: number; co2Kg: number; treesPlanted: number; }
 
 // ─── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, color, delay = 0 }: { icon: string; label: string; value: string; color: string; delay?: number }) {
@@ -106,12 +111,18 @@ export default function PassivePlant() {
     queryFn: () => apiFetch<Reward[]>(`/api/passive/rewards?sessionId=${sessionId}`),
     enabled: !!sessionId,
   });
+  const historyQ = useQuery({
+    queryKey: ["pp-history", sessionId],
+    queryFn: () => apiFetch<HistoryDay[]>(`/api/phone/history?sessionId=${sessionId}`),
+    enabled: !!sessionId,
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["passive-summary", sessionId] });
     qc.invalidateQueries({ queryKey: ["pp-trees", sessionId] });
     qc.invalidateQueries({ queryKey: ["pp-rewards", sessionId] });
     qc.invalidateQueries({ queryKey: ["pp-tree-map"] });
+    qc.invalidateQueries({ queryKey: ["pp-history", sessionId] });
   };
 
   const trackMut = useMutation({
@@ -138,11 +149,13 @@ export default function PassivePlant() {
     onError: () => toast({ title: "Failed to claim", variant: "destructive" }),
   });
 
-  const summary  = summaryQ.data;
-  const trees    = treesQ.data ?? [];
-  const treeMap  = mapQ.data ?? [];
-  const rewards  = rewardsQ.data ?? [];
+  const summary   = summaryQ.data;
+  const trees     = treesQ.data ?? [];
+  const treeMap   = mapQ.data ?? [];
+  const rewards   = rewardsQ.data ?? [];
+  const history   = historyQ.data ?? [];
   const unclaimed = rewards.filter(r => !r.isClaimed);
+  const hasHistory = history.some(d => d.screenHours > 0 || d.treesPlanted > 0);
 
   const totalPlanted = summary?.total_trees_planted ?? 0;
 
@@ -171,6 +184,82 @@ export default function PassivePlant() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map(s => <StatCard key={s.label} {...s} />)}
       </div>
+
+      {/* ── 7-Day History Chart ── */}
+      <motion.div
+        className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm"
+        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, ease: "easeOut" }}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📊</span>
+            <h2 className="font-bold text-gray-800 text-sm">7-Day Activity</h2>
+          </div>
+          <div className="flex items-center gap-4 text-[10px] text-gray-400">
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-400" />Screen hours
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-2.5 h-2 rounded-full bg-emerald-500" />Trees
+            </span>
+          </div>
+        </div>
+
+        {!hasHistory ? (
+          <div className="flex flex-col items-center justify-center h-36 text-center">
+            <div className="text-3xl mb-2">📱</div>
+            <div className="text-sm text-gray-400 font-medium">No usage logged yet</div>
+            <div className="text-xs text-gray-300 mt-1">Log your first session to see your chart</div>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={history} margin={{ top: 4, right: 16, left: -12, bottom: 0 }}>
+              <CartesianGrid vertical={false} stroke="#f1f5f9" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10, fill: "#9ca3af" }}
+                axisLine={false} tickLine={false}
+              />
+              <YAxis
+                yAxisId="hours"
+                orientation="left"
+                tick={{ fontSize: 10, fill: "#9ca3af" }}
+                axisLine={false} tickLine={false}
+                tickFormatter={v => `${v}h`}
+              />
+              <YAxis
+                yAxisId="trees"
+                orientation="right"
+                tick={{ fontSize: 10, fill: "#059669" }}
+                axisLine={false} tickLine={false}
+                tickFormatter={v => `${v}🌳`}
+                width={38}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "white", border: "1px solid #e5e7eb",
+                  borderRadius: 12, fontSize: 11, boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                }}
+                formatter={(value: number, name: string) =>
+                  name === "screenHours" ? [`${value}h`, "Screen time"] : [`${value}`, "Trees planted"]
+                }
+                labelStyle={{ color: "#6b7280", fontWeight: 600, marginBottom: 4 }}
+              />
+              <Bar
+                yAxisId="hours" dataKey="screenHours"
+                fill="#93c5fd" radius={[5, 5, 0, 0]}
+                maxBarSize={40}
+              />
+              <Line
+                yAxisId="trees" dataKey="treesPlanted" type="monotone"
+                stroke="#059669" strokeWidth={2.5} dot={{ fill: "#059669", r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: "#059669" }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
+      </motion.div>
 
       {/* ── Two-column: Tracker + Tree Visualization ── */}
       <div className="grid gap-5 md:grid-cols-2">

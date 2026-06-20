@@ -207,4 +207,39 @@ router.get("/passive/rewards", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
+// ── GET /api/phone/history ────────────────────────────────────────────────────
+router.get("/phone/history", async (req, res): Promise<void> => {
+  const sessionId = req.query.sessionId as string | undefined;
+  if (!sessionId) { res.status(400).json({ error: "sessionId required" }); return; }
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().split("T")[0];
+  });
+  const since = days[0];
+
+  const [usageRows, plantRows] = await Promise.all([
+    db.select().from(phoneUsageTable)
+      .where(and(eq(phoneUsageTable.sessionId, sessionId), gte(phoneUsageTable.usageDate, since))),
+    db.select().from(treePlantsTable)
+      .where(and(eq(treePlantsTable.sessionId, sessionId), gte(treePlantsTable.plantDate, since))),
+  ]);
+
+  const result = days.map(date => {
+    const uRows = usageRows.filter(r => r.usageDate === date);
+    const pRows = plantRows.filter(r => r.plantDate === date);
+    const d = new Date(date + "T12:00:00");
+    return {
+      date,
+      label: d.toLocaleDateString("en", { weekday: "short", day: "numeric" }),
+      screenHours: +uRows.reduce((s, r) => s + r.screenTimeHours, 0).toFixed(2),
+      co2Kg:       +uRows.reduce((s, r) => s + r.co2Kg,            0).toFixed(4),
+      treesPlanted: pRows.reduce((s, r) => s + r.treesPlanted,     0),
+    };
+  });
+
+  res.json(result);
+});
+
 export default router;
