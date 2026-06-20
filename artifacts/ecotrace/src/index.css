@@ -276,3 +276,99 @@ button:not([disabled]):not(.no-glow):hover,
 html {
   scroll-behavior: smooth;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   GLOBAL HOVER INTERACTION SYSTEM
+   Usage:
+     .hover-lift      — subtle scale + shadow lift (cards, panels)
+     .hover-glow      — emerald glow bloom (CTAs, feature cards)
+     .hover-scale     — scale only, no shadow (icons, images)
+     .interactive     — combined lift + glow (primary interactive elements)
+   All classes compose cleanly with existing Tailwind utilities.
+════════════════════════════════════════════════════════════════════════════ */
+
+/* Base transition applied to anything with a hover class */
+.hover-lift,
+.hover-glow,
+.hover-scale,
+.interactive {
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    filter 0.2s ease,
+    border-color 0.2s ease;
+  will-change: transform;
+  cursor: pointer;
+}
+
+/* ── .hover-lift ─────────────────────────────────────────────────────────── */
+.hover-lift:hover {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    0 2px 6px rgba(0, 0, 0, 0.06);
+}
+.hover-lift:active {
+  transform: translateY(-1px) scale(1.005);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* ── .hover-glow ─────────────────────────────────────────────────────────── */
+.hover-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.25),
+    0 0 24px rgba(16, 185, 129, 0.22),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  filter: brightness(1.02);
+}
+.hover-glow:active {
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.3),
+    0 0 12px rgba(16, 185, 129, 0.18);
+}
+
+/* ── .hover-scale ────────────────────────────────────────────────────────── */
+.hover-scale:hover {
+  transform: scale(1.06);
+}
+.hover-scale:active {
+  transform: scale(0.97);
+}
+
+/* ── .interactive (lift + glow combined) ────────────────────────────────── */
+.interactive:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 0 0 1px rgba(16, 185, 129, 0.2),
+    0 0 20px rgba(16, 185, 129, 0.18),
+    0 6px 20px rgba(0, 0, 0, 0.09);
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+.interactive:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* ── Micro-interaction: icon nudge ───────────────────────────────────────── */
+.hover-lift:hover svg,
+.hover-glow:hover svg,
+.interactive:hover svg {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* ── Sidebar group labels ─────────────────────────────────────────────────── */
+.sidebar-group-header:hover {
+  color: hsl(var(--foreground));
+  background-color: rgba(16, 185, 129, 0.04);
+  border-radius: 8px;
+}
+
+/* ── Apply hover-lift automatically to Card components ───────────────────── */
+.glow-card {
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease;
+}
+
