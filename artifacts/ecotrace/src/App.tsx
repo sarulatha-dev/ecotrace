@@ -13,6 +13,9 @@ import Leaderboard from "@/pages/leaderboard";
 import Coach from "@/pages/coach";
 import Report from "@/pages/report";
 import Bank from "@/pages/bank";
+import SmartHome from "@/pages/smart-home";
+import Rewards from "@/pages/rewards";
+import BillOptimizer from "@/pages/bill-optimizer";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -33,6 +36,9 @@ function Router() {
             <Route path="/coach" component={Coach} />
             <Route path="/report" component={Report} />
             <Route path="/bank" component={Bank} />
+            <Route path="/smart-home" component={SmartHome} />
+            <Route path="/rewards" component={Rewards} />
+            <Route path="/bill-optimizer" component={BillOptimizer} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

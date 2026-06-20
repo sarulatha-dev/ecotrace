@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Leaf, PlusCircle, LayoutDashboard, Target, BarChart3, Trophy, FileText, Sparkles, ScanLine, CreditCard } from "lucide-react";
+import { Leaf, PlusCircle, LayoutDashboard, Target, BarChart3, Trophy, FileText, Sparkles, ScanLine, CreditCard, Home, Coins, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -7,6 +7,9 @@ const NAV_ITEMS = [
   { href: "/log", label: "Log Activity", icon: PlusCircle },
   { href: "/scan", label: "Photo Scan", icon: ScanLine },
   { href: "/bank", label: "Bank Import", icon: CreditCard },
+  { href: "/smart-home", label: "Smart Home", icon: Home },
+  { href: "/rewards", label: "Eco Rewards", icon: Coins },
+  { href: "/bill-optimizer", label: "Bill Optimizer", icon: TrendingDown },
   { href: "/challenges", label: "Challenges", icon: Target },
   { href: "/insights", label: "Insights", icon: BarChart3 },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
@@ -36,7 +39,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         
-        <nav className="flex-1 px-4 space-y-1 mt-2">
+        <nav className="flex-1 px-4 space-y-1 mt-2 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const isActive = location === item.href;
             return (
@@ -79,12 +82,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-0.5 p-2 min-w-[52px] rounded-lg transition-colors",
+                "flex flex-col items-center gap-0.5 p-2 min-w-[48px] rounded-lg transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >
               <item.icon className={cn("h-5 w-5", isActive && "fill-primary/20")} />
-              <span className="text-[9px] font-medium leading-tight text-center">{item.label}</span>
+              <span className="text-[8px] font-medium leading-tight text-center">{item.label}</span>
             </Link>
           );
         })}
