@@ -8,6 +8,7 @@ import visionRouter from "./vision";
 import goalsRouter from "./goals";
 import devicesRouter from "./devices";
 import walletRouter from "./wallet";
+import passiveRouter from "./passive";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(visionRouter);
 router.use(goalsRouter);
 router.use(devicesRouter);
 router.use(walletRouter);
+router.use(passiveRouter);
 
 export default router;

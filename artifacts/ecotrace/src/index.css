@@ -255,21 +255,7 @@
 }
 
 .nav-glow:hover:not(.nav-active) {
-  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.18), 0 0 12px rgba(16, 185, 129, 0.08);
-  background-color: rgba(16, 185, 129, 0.06) !important;
-}
-
-/* ── Button subtle glow ──────────────────────────────────────────────────── */
-button:not([disabled]):not(.no-glow):hover,
-[role="button"]:not([disabled]):hover {
-  filter: brightness(1.04) saturate(1.05);
-  transition: filter 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* Primary/emerald buttons get stronger glow */
-.bg-emerald-700:hover,
-.bg-emerald-800:hover {
-  box-shadow: 0 0 18px rgba(16, 185, 129, 0.35), 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  background-color: rgba(0, 0, 0, 0.04) !important;
 }
 
 /* ── Scroll smooth ───────────────────────────────────────────────────────── */

@@ -16,6 +16,7 @@ import Bank from "@/pages/bank";
 import SmartHome from "@/pages/smart-home";
 import Rewards from "@/pages/rewards";
 import BillOptimizer from "@/pages/bill-optimizer";
+import PassivePlant from "@/pages/passive-plant";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ function Router() {
             <Route path="/smart-home" component={SmartHome} />
             <Route path="/rewards" component={Rewards} />
             <Route path="/bill-optimizer" component={BillOptimizer} />
+            <Route path="/passive-plant" component={PassivePlant} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

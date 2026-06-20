@@ -61,8 +61,8 @@ function FloatCard({
       whileTap={{ scale: 0.97, transition: { duration: 0.1 } }}
       onClick={onClick}
       style={{
-        border: `1px solid ${color}30`,
-        boxShadow: "0 2px 12px rgba(0,0,0,0.07)",
+        border: "1px solid #e5e7eb",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
       }}
     >
       {children}
@@ -463,11 +463,9 @@ function ChallengesStrip({ challenges, completions, onComplete, color }: {
               whileTap={{ scale: 0.97 }}
               onClick={() => !completed && onComplete(ch.id)}
               style={{
-                border: `1px solid ${c}25`,
-                boxShadow: completed
-                  ? `0 2px 12px ${c}20`
-                  : "0 2px 10px rgba(0,0,0,0.06)",
-                background: completed ? `${c}08` : "white",
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+                background: completed ? "#f0fdf4" : "white",
               }}
             >
               <div className="flex items-start justify-between mb-2">

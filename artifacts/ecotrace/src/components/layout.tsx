@@ -4,7 +4,7 @@ import {
   Leaf, LayoutDashboard, PlusCircle, ScanLine, CreditCard,
   Home, Coins, TrendingDown, Target, BarChart3, Trophy,
   Sparkles, FileText, ChevronDown, ChevronRight, PanelLeftClose, PanelLeftOpen,
-  Activity, Wrench, Star, User2
+  Activity, Wrench, Star, User2, TreePine
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -194,7 +194,8 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
       label: "Rewards",
       icon: Star,
       items: [
-        { href: "/rewards", label: "Eco Rewards", icon: Coins },
+        { href: "/rewards",       label: "Eco Rewards",   icon: Coins    },
+        { href: "/passive-plant", label: "PassivePlant",  icon: TreePine },
       ],
     },
     {

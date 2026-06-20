@@ -10,3 +10,4 @@ export * from "./eco-wallets";
 export * from "./eco-transactions";
 export * from "./eco-subscriptions";
 export * from "./neighborhood-stats";
+export * from "./passive-plant";
