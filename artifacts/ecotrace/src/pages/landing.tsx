@@ -10,7 +10,6 @@ import {
   Zap, Globe, TrendingDown, Award,
 } from "lucide-react";
 import { Link } from "wouter";
-import CursorGlow from "../components/cursor-glow";
 import LanguageSwitcher from "../components/language-switcher";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -378,11 +377,6 @@ export default function Landing() {
         @keyframes eco-spin-slow  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes eco-float      { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
       `}</style>
-
-      {/* Custom cursor (desktop) */}
-      <div className="hidden md:block">
-        <CursorGlow />
-      </div>
 
       <div
         className="relative w-screen h-screen overflow-hidden"

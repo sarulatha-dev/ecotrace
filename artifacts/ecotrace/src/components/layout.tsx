@@ -49,7 +49,8 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        "nav-glow group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full",
+        "nav-glow group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 w-full",
+        "hover:-translate-y-0.5 hover:scale-[1.02] active:scale-[0.97] active:translate-y-0",
         active
           ? "nav-active bg-primary text-primary-foreground shadow-sm"
           : "text-muted-foreground hover:text-foreground",
