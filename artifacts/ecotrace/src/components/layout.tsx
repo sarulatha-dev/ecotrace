@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 // ── Tooltip for collapsed mode ───────────────────────────────────────────────
 function SidebarTooltip({ label, children }: { label: string; children: React.ReactNode }) {
@@ -81,7 +82,6 @@ function NavGroup({
   const hasActive = items.some((i) => i.href === currentPath);
   const [open, setOpen] = useState(hasActive);
 
-  // Open group if child becomes active
   useEffect(() => { if (hasActive) setOpen(true); }, [hasActive]);
 
   if (collapsed) {
@@ -161,57 +161,57 @@ function Divider({ collapsed }: { collapsed: boolean }) {
 // ── Sidebar content ───────────────────────────────────────────────────────────
 function SidebarContent({ collapsed }: { collapsed: boolean }) {
   const [location] = useLocation();
+  const { t } = useTranslation();
 
   const topLevel = [
-    { href: "/dashboard", label: "Dashboard",   icon: LayoutDashboard },
-    { href: "/challenges", label: "Challenges",  icon: Target,         badge: "CTA" },
-    { href: "/insights",   label: "Insights",    icon: BarChart3 },
-    { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+    { href: "/dashboard",  label: t("nav.dashboard"),   icon: LayoutDashboard },
+    { href: "/challenges", label: t("nav.challenges"),  icon: Target,         badge: "CTA" },
+    { href: "/insights",   label: t("nav.insights"),    icon: BarChart3 },
+    { href: "/leaderboard",label: t("nav.leaderboard"), icon: Trophy },
   ];
 
   const groups = [
     {
       key: "activity",
-      label: "Activity",
+      label: t("nav.activity"),
       icon: Activity,
       items: [
-        { href: "/log",  label: "Log Activity", icon: PlusCircle },
-        { href: "/scan", label: "Photo Scan",   icon: ScanLine },
-        { href: "/bank", label: "Bank Import",  icon: CreditCard },
+        { href: "/log",  label: t("nav.log"),  icon: PlusCircle },
+        { href: "/scan", label: t("nav.scan"), icon: ScanLine },
+        { href: "/bank", label: t("nav.bank"), icon: CreditCard },
       ],
     },
     {
       key: "smart",
-      label: "Smart Tools",
+      label: t("nav.smartTools"),
       icon: Wrench,
       items: [
-        { href: "/smart-home",     label: "Smart Home",     icon: Home },
-        { href: "/bill-optimizer", label: "Bill Optimizer", icon: TrendingDown },
+        { href: "/smart-home",     label: t("nav.smartHome"),     icon: Home },
+        { href: "/bill-optimizer", label: t("nav.billOptimizer"), icon: TrendingDown },
       ],
     },
     {
       key: "rewards",
-      label: "Rewards",
+      label: t("nav.rewards"),
       icon: Star,
       items: [
-        { href: "/rewards",       label: "Eco Rewards",   icon: Coins    },
-        { href: "/passive-plant", label: "PassivePlant",  icon: TreePine },
+        { href: "/rewards",       label: t("nav.ecoRewards"),  icon: Coins    },
+        { href: "/passive-plant", label: t("nav.passivePlant"), icon: TreePine },
       ],
     },
     {
       key: "myspace",
-      label: "My Space",
+      label: t("nav.mySpace"),
       icon: User2,
       items: [
-        { href: "/coach",  label: "AI Coach",  icon: Sparkles },
-        { href: "/report", label: "My Report", icon: FileText },
+        { href: "/coach",  label: t("nav.aiCoach"),  icon: Sparkles },
+        { href: "/report", label: t("nav.myReport"), icon: FileText },
       ],
     },
   ];
 
   return (
     <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 gap-0.5">
-      {/* Top-level items */}
       {topLevel.map((item) => (
         <NavItem
           key={item.href}
@@ -226,7 +226,6 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
 
       <Divider collapsed={collapsed} />
 
-      {/* Grouped sections */}
       <div className="space-y-0.5">
         {groups.map((group) => (
           <NavGroup
@@ -247,6 +246,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row">
@@ -307,9 +307,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="p-3 rounded-xl bg-primary/8 border border-primary/15">
                 <div className="flex items-center gap-2 mb-1">
                   <Leaf className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs font-semibold text-primary">Make an Impact</span>
+                  <span className="text-xs font-semibold text-primary">{t("sidebar.makeImpact")}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Every small action counts towards a greener future.</p>
+                <p className="text-xs text-muted-foreground">{t("sidebar.impactText")}</p>
               </div>
             </motion.div>
           )}
@@ -321,14 +321,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile bottom nav — show only top-level + key items */}
+      {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t flex items-center justify-around px-1 py-1 pb-safe">
         {[
-          { href: "/dashboard",  icon: LayoutDashboard, label: "Home" },
-          { href: "/log",        icon: PlusCircle,      label: "Log" },
-          { href: "/smart-home", icon: Home,            label: "Smart" },
-          { href: "/insights",   icon: BarChart3,       label: "Insights" },
-          { href: "/rewards",    icon: Coins,           label: "Rewards" },
+          { href: "/dashboard",  icon: LayoutDashboard, label: t("nav.home") },
+          { href: "/log",        icon: PlusCircle,      label: t("nav.log_short") },
+          { href: "/smart-home", icon: Home,            label: t("nav.smart") },
+          { href: "/insights",   icon: BarChart3,       label: t("nav.insights_short") },
+          { href: "/rewards",    icon: Coins,           label: t("nav.rewards_short") },
         ].map((item) => {
           const isActive = location === item.href;
           return (

@@ -19,6 +19,7 @@ import {
   X, Plus, Zap, Trophy, Flame, CheckCircle2, Circle,
   TreePine, Plane, Activity,
 } from "lucide-react";
+import { LivingForest } from "@/components/living-forest";
 
 // ─── Carbon Level ────────────────────────────────────────────────────────────
 type CarbonLevel = "low" | "medium" | "high";
@@ -736,8 +737,13 @@ export default function Dashboard() {
         <TravelImpactCard flightHours={flightHours} trees={trees} color={color} onClick={() => setActiveModule("travel")} />
       </div>
 
+      {/* Living Forest System */}
+      <div className="mt-5 mb-2">
+        <LivingForest score={ecoScore} />
+      </div>
+
       {/* Divider */}
-      <div className="mx-4 md:mx-6 my-6 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color}30, transparent)` }} />
+      <div className="mx-4 md:mx-6 my-4 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color}30, transparent)` }} />
 
       {/* Challenges */}
       <ChallengesStrip

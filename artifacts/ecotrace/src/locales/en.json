@@ -47,5 +47,49 @@
     "globe": "Drag the globe to explore sections",
     "openApp": "Jump straight into your dashboard",
     "lang": "Switch language instantly — no reload"
+  },
+
+  "nav": {
+    "dashboard": "Dashboard",
+    "challenges": "Challenges",
+    "insights": "Insights",
+    "leaderboard": "Leaderboard",
+    "activity": "ACTIVITY",
+    "log": "Log Activity",
+    "scan": "Photo Scan",
+    "bank": "Bank Import",
+    "smartTools": "SMART TOOLS",
+    "smartHome": "Smart Home",
+    "billOptimizer": "Bill Optimizer",
+    "rewards": "REWARDS",
+    "ecoRewards": "Eco Rewards",
+    "passivePlant": "PassivePlant",
+    "mySpace": "MY SPACE",
+    "aiCoach": "AI Coach",
+    "myReport": "My Report",
+    "home": "Home",
+    "log_short": "Log",
+    "smart": "Smart",
+    "insights_short": "Insights",
+    "rewards_short": "Rewards"
+  },
+
+  "sidebar": {
+    "makeImpact": "Make an Impact",
+    "impactText": "Every small action counts towards a greener future."
+  },
+
+  "forest": {
+    "dead": "Barren",
+    "sprout": "Sprouting",
+    "growth": "Growing",
+    "forest": "Thriving",
+    "score": "Eco Score",
+    "tagline": {
+      "dead": "Start logging to grow your forest",
+      "sprout": "Your forest is waking up 🌱",
+      "growth": "Your ecosystem is flourishing 🌿",
+      "forest": "Your forest is alive and thriving! 🌳"
+    }
   }
 }

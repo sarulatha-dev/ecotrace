@@ -116,36 +116,66 @@ function GlobeMesh({ rotRef, isDraggingRef }: {
 }) {
   const sphereRef = useRef<THREE.Mesh>(null);
   const wireRef   = useRef<THREE.Mesh>(null);
-  const glowRef   = useRef<THREE.Mesh>(null);
+  const cloudRef  = useRef<THREE.Mesh>(null);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!sphereRef.current) return;
     if (!isDraggingRef.current) rotRef.current.y += delta * 0.16;
     sphereRef.current.rotation.y = rotRef.current.y;
     sphereRef.current.rotation.x = rotRef.current.x;
-    if (wireRef.current) { wireRef.current.rotation.y = rotRef.current.y; wireRef.current.rotation.x = rotRef.current.x; }
-    if (glowRef.current) { glowRef.current.rotation.y = rotRef.current.y * 0.5; }
+    if (wireRef.current) {
+      wireRef.current.rotation.y = rotRef.current.y;
+      wireRef.current.rotation.x = rotRef.current.x;
+    }
+    // Clouds rotate slightly faster for parallax
+    if (cloudRef.current) {
+      cloudRef.current.rotation.y = rotRef.current.y + state.clock.elapsedTime * 0.04;
+      cloudRef.current.rotation.x = rotRef.current.x * 0.9;
+    }
   });
 
   return (
     <>
+      {/* Core sphere — deep ocean + land tones */}
       <mesh ref={sphereRef}>
         <sphereGeometry args={[2, 64, 64]} />
-        <meshPhongMaterial color="#0a5c6e" emissive="#052e3a" shininess={70} specular="#1de9b6" />
+        <meshPhongMaterial
+          color="#0a5c6e"
+          emissive="#041e2a"
+          emissiveIntensity={0.55}
+          shininess={90}
+          specular="#20e8c0"
+        />
       </mesh>
+
+      {/* Wireframe lat/lon grid */}
       <mesh ref={wireRef}>
-        <sphereGeometry args={[2.01, 28, 18]} />
-        <meshBasicMaterial color="#10b981" wireframe transparent opacity={0.16} />
+        <sphereGeometry args={[2.012, 28, 18]} />
+        <meshBasicMaterial color="#10b981" wireframe transparent opacity={0.13} />
       </mesh>
-      {/* Inner glow */}
-      <mesh ref={glowRef} scale={[1.07, 1.07, 1.07]}>
+
+      {/* Cloud layer — drifts independently */}
+      <mesh ref={cloudRef} scale={[1.035, 1.035, 1.035]}>
         <sphereGeometry args={[2, 32, 32]} />
-        <meshBasicMaterial color="#34d399" transparent opacity={0.048} side={THREE.BackSide} />
+        <meshBasicMaterial color="#e0f7f0" transparent opacity={0.065} side={THREE.FrontSide} />
       </mesh>
-      {/* Outer atmosphere */}
-      <mesh scale={[1.16, 1.16, 1.16]}>
+
+      {/* Inner atmosphere rim — close glow */}
+      <mesh scale={[1.08, 1.08, 1.08]}>
         <sphereGeometry args={[2, 32, 32]} />
-        <meshBasicMaterial color="#065f46" transparent opacity={0.022} side={THREE.BackSide} />
+        <meshBasicMaterial color="#34d399" transparent opacity={0.072} side={THREE.BackSide} />
+      </mesh>
+
+      {/* Mid atmosphere */}
+      <mesh scale={[1.18, 1.18, 1.18]}>
+        <sphereGeometry args={[2, 32, 32]} />
+        <meshBasicMaterial color="#10b981" transparent opacity={0.038} side={THREE.BackSide} />
+      </mesh>
+
+      {/* Outer halo — wide diffuse rim light */}
+      <mesh scale={[1.34, 1.34, 1.34]}>
+        <sphereGeometry args={[2, 32, 32]} />
+        <meshBasicMaterial color="#064e3b" transparent opacity={0.022} side={THREE.BackSide} />
       </mesh>
     </>
   );
@@ -393,10 +423,15 @@ export default function Landing() {
         <div className="absolute inset-0">
           {webgl ? (
             <Canvas camera={{ position: [0, 0, 5.6], fov: 42 }} dpr={[1, 1.5]}>
-              <Stars radius={100} depth={60} count={7000} factor={4} saturation={0} fade speed={0.5} />
-              <ambientLight intensity={0.45} />
-              <directionalLight position={[6, 4, 6]} intensity={1.9} />
-              <pointLight position={[-6, -3, -3]} intensity={0.45} color="#34d399" />
+              <Stars radius={120} depth={60} count={9000} factor={4.5} saturation={0} fade speed={0.4} />
+              {/* Ambient — low base fill */}
+              <ambientLight intensity={0.28} />
+              {/* Sun directional light */}
+              <directionalLight position={[7, 4, 6]} intensity={2.2} color="#fff8e8" />
+              {/* Eco green rim light from the left */}
+              <pointLight position={[-6, 1, -2]} intensity={0.9} color="#34d399" />
+              {/* Subtle fill from below */}
+              <pointLight position={[0, -5, 3]} intensity={0.22} color="#064e3b" />
               <GlobeMesh rotRef={rotRef} isDraggingRef={isDraggingRef} />
             </Canvas>
           ) : (
