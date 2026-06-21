@@ -1,13 +1,17 @@
-import { useState, useRef, Suspense } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import * as THREE from "three";
+import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import { useSessionId } from "@/hooks/use-session";
+import CountUp from "react-countup";
+import { CircularProgress } from "@/components/CircularProgress";
+import { AnimatedBarChart } from "@/components/AnimatedBarChart";
+import { GlobeCard } from "@/components/GlobeCard";
+import { FloatingCard } from "@/components/FloatingCard";
 import {
   useGetActivitySummary, getGetActivitySummaryQueryKey,
   useListActivities, getListActivitiesQueryKey,
-  useGetActivityStreak,
+  useGetActivityStreak, getGetActivityStreakQueryKey,
   useListChallenges, getListChallengesQueryKey,
   useListChallengeCompletions, getListChallengeCompletionsQueryKey,
   useCompleteChallenge,
@@ -17,201 +21,127 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   X, Plus, Zap, Trophy, Flame, CheckCircle2, Circle,
-  TreePine, Plane, Activity,
+  TreePine, Plane, Activity, RefreshCw, Globe as GlobeIcon
 } from "lucide-react";
 import { LivingForest } from "@/components/living-forest";
+import { useLogState } from "@/hooks/use-log-state";
 
-// ─── Carbon Level ────────────────────────────────────────────────────────────
+// ─── Carbon & Forest Levels ──────────────────────────────────────────────────
 type CarbonLevel = "low" | "medium" | "high";
 type ModuleKey   = "carbon" | "energy" | "travel" | "ecoscore" | null;
 
-const CARBON_COLORS: Record<CarbonLevel, string> = {
-  low:    "#059669",
-  medium: "#d97706",
-  high:   "#dc2626",
-};
-const CARBON_LABELS: Record<CarbonLevel, string> = {
-  low:    "LOW IMPACT",
-  medium: "MODERATE",
-  high:   "HIGH IMPACT",
-};
+// Get dynamic carbon color according to negative feedback system
+function getCarbonColor(totalCo2: number): string {
+  if (totalCo2 < 30) return "#22C55E";      // carbon-low
+  if (totalCo2 < 60) return "#EAB308";      // carbon-warning
+  if (totalCo2 < 120) return "#F97316";     // carbon-medium
+  return "#DC2626";                         // carbon-high
+}
+
 function getCarbonLevel(kg: number): CarbonLevel {
   if (kg < 50)  return "low";
   if (kg < 150) return "medium";
   return "high";
 }
 
-// ─── Pop-out card ────────────────────────────────────────────────────────────
-function FloatCard({
-  children, className = "", onClick, color = "#059669", delay = 0,
-}: {
-  children: React.ReactNode; className?: string; onClick?: () => void;
-  color?: string; delay?: number;
-}) {
-  return (
-    <motion.div
-      className={`bg-white rounded-2xl cursor-pointer select-none overflow-hidden ${className}`}
-      animate={{ y: [0, -6, 0] }}
-      transition={{ duration: 3.5 + delay * 0.4, repeat: Infinity, ease: "easeInOut", delay }}
-      whileHover={{
-        scale: 1.06,
-        y: -10,
-        boxShadow: "0 16px 40px rgba(0,0,0,0.14)",
-        transition: { duration: 0.18, ease: "easeOut" },
-      }}
-      whileTap={{ scale: 0.97, transition: { duration: 0.1 } }}
-      onClick={onClick}
-      style={{
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-      }}
-    >
-      {children}
-    </motion.div>
-  );
+// 0-20 -> gray dead, 20-40 -> low, 40-60 -> mid, 60-80 -> good, 80-100 -> best
+function getForestColor(score: number): string {
+  if (score <= 20) return "#3F3F46";
+  if (score <= 40) return "#65A30D";
+  if (score <= 60) return "#22C55E";
+  if (score <= 80) return "#4ADE80";
+  return "#166534";
 }
 
-// ─── Ring Progress ───────────────────────────────────────────────────────────
-function RingProgress({
-  value, max, color, size = 76, thick = 6,
-}: { value: number; max: number; color: string; size?: number; thick?: number }) {
-  const r    = (size - thick) / 2;
-  const circ = 2 * Math.PI * r;
-  const pct  = max > 0 ? Math.min(value / max, 1) : 0;
-  return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={thick} />
-      <motion.circle
-        cx={size/2} cy={size/2} r={r} fill="none"
-        stroke={color} strokeWidth={thick} strokeLinecap="round"
-        strokeDasharray={circ}
-        initial={{ strokeDashoffset: circ }}
-        animate={{ strokeDashoffset: circ * (1 - pct) }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
-      />
-    </svg>
-  );
+function getForestEmoji(score: number): string {
+  if (score <= 20) return "🍂";
+  if (score <= 40) return "🌱";
+  if (score <= 60) return "🌿";
+  if (score <= 80) return "🌳";
+  return "🌲";
 }
 
-// ─── Earth mesh ───────────────────────────────────────────────────────────────
-function Earth({ level }: { level: CarbonLevel }) {
-  const earthRef = useRef<THREE.Mesh>(null!);
-  const wireRef  = useRef<THREE.Mesh>(null!);
-  const color    = CARBON_COLORS[level];
-
-  useFrame((state, delta) => {
-    earthRef.current.rotation.y += delta * 0.07;
-    wireRef.current.rotation.y  += delta * 0.044;
-    wireRef.current.rotation.x   = Math.sin(state.clock.elapsedTime * 0.35) * 0.04;
-  });
-
-  const c = new THREE.Color(color);
-  return (
-    <group>
-      <mesh ref={earthRef}>
-        <sphereGeometry args={[1.5, 64, 64]} />
-        <meshPhongMaterial color="#0c3a20" emissive={c} emissiveIntensity={0.08} shininess={40} />
-      </mesh>
-      <mesh ref={wireRef} scale={1.004}>
-        <sphereGeometry args={[1.5, 22, 22]} />
-        <meshBasicMaterial color={color} wireframe transparent opacity={0.1} />
-      </mesh>
-    </group>
-  );
-}
-
-function GlobeScene({ level }: { level: CarbonLevel }) {
-  return (
-    <Canvas
-      camera={{ position: [0, 0, 4.5], fov: 45 }}
-      gl={{ alpha: true, antialias: true }}
-      style={{ background: "transparent" }}
-    >
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[5, 3, 5]} intensity={1.1} />
-      <Suspense fallback={null}>
-        <Earth level={level} />
-      </Suspense>
-      <OrbitControls
-        enableZoom={false} enablePan={false} rotateSpeed={0.4}
-        minPolarAngle={Math.PI * 0.2} maxPolarAngle={Math.PI * 0.8}
-      />
-    </Canvas>
-  );
+function getForestLabel(score: number): string {
+  if (score <= 20) return "Barren 🍂";
+  if (score <= 40) return "Sprouting 🌱";
+  if (score <= 60) return "Growing 🌿";
+  if (score <= 80) return "Thriving 🌳";
+  return "Forest Champion 🌲";
 }
 
 // ─── Modules ─────────────────────────────────────────────────────────────────
 function CarbonTrackerCard({ totalCo2, dailyAverage, level, color, onClick }: {
   totalCo2: number; dailyAverage: number; level: CarbonLevel; color: string; onClick: () => void;
 }) {
+  const { t } = useTranslation();
   return (
-    <FloatCard color={color} delay={0} onClick={onClick} className="w-[195px]">
-      <div className="p-4">
-        <div className="flex items-center gap-1.5 mb-3">
-          <Activity className="w-3.5 h-3.5" style={{ color }} />
-          <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-gray-500">Carbon Tracker</span>
+    <FloatingCard>
+      <div onClick={onClick} className="cursor-pointer flex flex-col justify-between h-full hover:scale-[1.01] transition-transform duration-200">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Activity className="w-3.5 h-3.5 animate-pulse" style={{ color }} />
+          <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-foreground/80">{t("dashboard.carbonTracker")}</span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative shrink-0">
-            <RingProgress value={totalCo2} max={Math.max(totalCo2, 100)} color={color} />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-sm font-bold text-gray-800 leading-none">{totalCo2.toFixed(0)}</span>
-              <span className="text-[8px] text-gray-400 mt-0.5">kg</span>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="relative shrink-0 flex items-center justify-center p-1 bg-primary/10 rounded-full border border-primary/20 shadow-inner">
+            <CircularProgress value={totalCo2} max={Math.max(totalCo2, 100)} color={color} size={84} thickness={7} />
           </div>
-          <div>
-            <div className="text-[9px] text-gray-400 mb-0.5">7-day total</div>
-            <div className="text-xl font-black leading-none" style={{ color }}>{totalCo2.toFixed(1)}</div>
-            <div className="text-[8px] text-gray-400">kg CO₂</div>
-            <div className="mt-1.5 text-[8px] font-bold tracking-widest" style={{ color }}>
-              {CARBON_LABELS[level]}
+          <div className="min-w-0">
+            <div className="text-[9px] text-muted-foreground mb-0.5">{t("dashboard.sevenDayTotal")}</div>
+            <div className="text-xl font-black leading-none truncate" style={{ color }}>
+              <CountUp end={totalCo2} decimals={1} duration={1.2} />
             </div>
-            <div className="text-[8px] text-gray-400 mt-0.5">avg {dailyAverage.toFixed(1)}/day</div>
+            <div className="text-[9px] text-muted-foreground mt-1">kg CO₂</div>
+            <div className="mt-1 text-[8px] font-bold tracking-widest truncate uppercase" style={{ color }}>
+              {t(`dashboard.rating${level.charAt(0).toUpperCase() + level.slice(1)}`)}
+            </div>
+            <div className="text-[9px] text-muted-foreground mt-1">{t("dashboard.avgPerDay", { avg: dailyAverage.toFixed(1) })}</div>
           </div>
         </div>
       </div>
-    </FloatCard>
+    </FloatingCard>
   );
 }
 
 function EcoScoreCard({ score, streak, color, onClick }: {
   score: number; streak: number; color: string; onClick: () => void;
 }) {
+  const { t } = useTranslation();
+  const forestColor = getForestColor(score);
+  const forestEmoji = getForestEmoji(score);
+  const forestLabel = getForestLabel(score);
+
   return (
-    <FloatCard color={color} delay={0.6} onClick={onClick} className="w-[155px]">
-      <div className="p-4 text-center">
-        <div className="flex items-center justify-center gap-1.5 mb-1.5">
-          <Trophy className="w-3.5 h-3.5" style={{ color }} />
-          <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-gray-500">Eco Score</span>
+    <FloatingCard>
+      <div onClick={onClick} className="cursor-pointer text-center flex flex-col justify-between h-full hover:scale-[1.01] transition-transform duration-200">
+        <div className="flex items-center justify-center gap-1.5 mb-2">
+          <Trophy className="w-3.5 h-3.5" style={{ color: forestColor }} />
+          <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-foreground/80">{t("dashboard.ecoScore")}</span>
         </div>
-        <motion.div
-          className="text-5xl font-black leading-none"
-          style={{ color }}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", delay: 0.25, stiffness: 130 }}
-        >
-          {score}
-        </motion.div>
-        <div className="text-[9px] text-gray-400 mb-2">/ 100</div>
-        <div className="flex items-center justify-center gap-1 text-[9px] mb-2">
-          <Flame className="w-3 h-3 text-orange-400" />
-          <span className="text-gray-500">{streak} day streak</span>
+        <div className="my-1">
+          <span className="text-4xl font-black leading-none" style={{ color: forestColor }}>
+            <CountUp end={score} duration={1.5} />
+          </span>
+          <span className="text-[10px] text-muted-foreground ml-1">/ 100</span>
+        </div>
+        <div className="flex items-center justify-center gap-1 text-[9px] mb-2 text-muted-foreground">
+          <Flame className="w-3 h-3 text-orange-500 animate-bounce" />
+          <span>{t("dashboard.dayStreak", { streak })}</span>
         </div>
         <div
-          className="text-[8px] font-bold tracking-widest px-2 py-1 rounded-full inline-block"
-          style={{ color, background: `${color}12`, border: `1px solid ${color}25` }}
+          className="text-[9px] font-bold tracking-widest px-2.5 py-0.5 rounded-full inline-block truncate"
+          style={{ color: forestColor, background: `${forestColor}15`, border: `1px solid ${forestColor}30` }}
         >
-          {score >= 70 ? "ECO HERO 🌟" : score >= 40 ? "IMPROVING 🌱" : "NEEDS WORK ⚠️"}
+          {forestLabel}
         </div>
       </div>
-    </FloatCard>
+    </FloatingCard>
   );
 }
 
 function EnergyUsageCard({ activities, color, onClick }: {
   activities: { category: string; co2Amount: number }[]; color: string; onClick: () => void;
 }) {
+  const { t } = useTranslation();
   const cats = [
     { cat: "transport", icon: "🚗" },
     { cat: "energy",    icon: "⚡" },
@@ -219,82 +149,76 @@ function EnergyUsageCard({ activities, color, onClick }: {
     { cat: "shopping",  icon: "🛍️" },
   ];
   const totals  = cats.map(({ cat, icon }) => ({
-    cat, icon,
-    val: activities.filter(a => a.category === cat).reduce((s, a) => s + a.co2Amount, 0),
+    category: cat,
+    value: activities.filter(a => a.category === cat).reduce((s, a) => s + a.co2Amount, 0),
   }));
-  const maxVal = Math.max(...totals.map(d => d.val), 1);
 
   return (
-    <FloatCard color={color} delay={1} onClick={onClick} className="w-[200px]">
-      <div className="p-4">
-        <div className="flex items-center gap-1.5 mb-3">
+    <FloatingCard>
+      <div onClick={onClick} className="cursor-pointer flex flex-col justify-between h-full hover:scale-[1.01] transition-transform duration-200">
+        <div className="flex items-center gap-1.5 mb-2">
           <Zap className="w-3.5 h-3.5" style={{ color }} />
-          <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-gray-500">Energy Usage</span>
+          <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-foreground/80">{t("dashboard.energyUsage")}</span>
         </div>
-        <div className="space-y-2.5">
-          {totals.map(({ cat, icon, val }, i) => (
-            <div key={cat} className="flex items-center gap-2">
-              <span className="text-xs w-4 shrink-0">{icon}</span>
-              <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                <motion.div
-                  className="h-full rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(val / maxVal) * 100}%` }}
-                  transition={{ duration: 1, delay: i * 0.1, ease: "easeOut" }}
-                  style={{ background: color }}
-                />
-              </div>
-              <span className="text-[9px] text-gray-400 w-8 text-right shrink-0">{val.toFixed(1)}</span>
-            </div>
-          ))}
+        <div className="my-1.5">
+          <AnimatedBarChart data={totals} color={color} />
+        </div>
+        <div className="flex justify-between items-center text-[8px] text-muted-foreground pt-1 border-t border-border/40">
+          <span>🚗 Transit</span>
+          <span>⚡ Utility</span>
+          <span>🥩 Diet</span>
+          <span>🛍️ Shop</span>
         </div>
       </div>
-    </FloatCard>
+    </FloatingCard>
   );
 }
 
 function TravelImpactCard({ flightHours, trees, color, onClick }: {
   flightHours: number; trees: number; color: string; onClick: () => void;
 }) {
+  const { t } = useTranslation();
   return (
-    <FloatCard color={color} delay={1.4} onClick={onClick} className="w-[185px]">
-      <div className="p-4">
-        <div className="flex items-center gap-1.5 mb-2.5">
+    <FloatingCard>
+      <div onClick={onClick} className="cursor-pointer flex flex-col justify-between h-full hover:scale-[1.01] transition-transform duration-200">
+        <div className="flex items-center gap-1.5 mb-1.5">
           <Plane className="w-3.5 h-3.5" style={{ color }} />
-          <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-gray-500">Travel Impact</span>
+          <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-foreground/80">{t("dashboard.travelImpact")}</span>
         </div>
-        <svg viewBox="0 0 160 36" className="w-full mb-2.5" height={36}>
+        <svg viewBox="0 0 160 36" className="w-full my-1.5" height={24}>
           <motion.path
-            d="M 8 28 Q 40 6 80 18 Q 120 30 152 6"
-            fill="none" stroke={color} strokeWidth={1.5}
+            d="M 8 24 Q 40 8 80 16 Q 120 24 152 8"
+            fill="none" stroke={color} strokeWidth={2}
             strokeDasharray="4 3"
             initial={{ pathLength: 0 }}
             animate={{ pathLength: 1 }}
-            transition={{ duration: 2, ease: "easeOut" }}
+            transition={{ duration: 2.2, ease: "easeOut" }}
           />
-          <motion.text x={147} y={11} fontSize={11}
+          <motion.text x={144} y={12} fontSize={12} fill={color}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            transition={{ delay: 1.6, duration: 0.4 }}
+            transition={{ delay: 1.8, duration: 0.4 }}
           >✈</motion.text>
         </svg>
-        <div className="flex gap-3">
+        <div className="flex gap-2 justify-between items-center mt-1">
           <div>
-            <div className="text-xl font-black text-gray-800 leading-none">
-              {flightHours.toFixed(1)}
-              <span className="text-[9px] text-gray-400 font-normal ml-1">hr</span>
+            <div className="text-base font-black text-foreground leading-none">
+              <CountUp end={flightHours} decimals={1} duration={1.2} />
+              <span className="text-[9px] text-muted-foreground font-normal ml-0.5">hr</span>
             </div>
-            <div className="text-[9px] text-gray-400">flight equiv</div>
+            <div className="text-[8px] text-muted-foreground">{t("dashboard.flightEquiv")}</div>
           </div>
-          <div className="w-px self-stretch bg-slate-100" />
+          <div className="w-px h-6 bg-border" />
           <div>
-            <div className="text-xl font-black leading-none" style={{ color }}>{trees.toFixed(0)}</div>
-            <div className="text-[9px] text-gray-400 flex items-center gap-0.5">
-              <TreePine className="w-2.5 h-2.5" style={{ color }} /> trees
+            <div className="text-base font-black leading-none" style={{ color }}>
+              <CountUp end={trees} duration={1.2} />
+            </div>
+            <div className="text-[8px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+              <TreePine className="w-2.5 h-2.5" style={{ color }} /> {t("dashboard.treesNeeded")}
             </div>
           </div>
         </div>
       </div>
-    </FloatCard>
+    </FloatingCard>
   );
 }
 
@@ -305,46 +229,47 @@ function DetailModal({ module, onClose, color, totalCo2, dailyAverage, flightHou
   trees: number; streak: number; score: number;
   activities: { category: string; activityLabel: string; co2Amount: number; loggedAt: string }[];
 }) {
+  const { t } = useTranslation();
   if (!module) return null;
 
   const panels: Record<NonNullable<ModuleKey>, React.ReactNode> = {
     carbon: (
       <>
-        <p className="text-xl font-bold text-gray-900 mb-4">Carbon Breakdown</p>
+        <p className="text-xl font-bold text-foreground mb-4">{t("dashboard.carbonBreakdown")}</p>
         <div className="grid grid-cols-2 gap-3 mb-5">
           {[
-            { label: "7-Day Total",   value: `${totalCo2.toFixed(2)} kg` },
-            { label: "Daily Average", value: `${dailyAverage.toFixed(2)} kg` },
+            { label: t("dashboard.sevenDayTotal"),   value: `${totalCo2.toFixed(2)} kg` },
+            { label: t("dashboard.weeklyAverage"), value: `${dailyAverage.toFixed(2)} kg` },
           ].map(({ label, value }) => (
-            <div key={label} className="rounded-xl p-3 bg-gray-50 border border-gray-100">
-              <div className="text-[9px] text-gray-400 mb-1">{label}</div>
+            <div key={label} className="rounded-xl p-3 bg-secondary/50 border border-border/50">
+              <div className="text-[9px] text-muted-foreground mb-1">{label}</div>
               <div className="text-base font-bold" style={{ color }}>{value}</div>
             </div>
           ))}
         </div>
         <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
           {activities.slice(0, 10).map((a, i) => (
-            <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100">
+            <div key={i} className="flex items-center justify-between py-2 border-b border-border/40">
               <div>
-                <div className="text-xs font-medium text-gray-700">{a.activityLabel}</div>
-                <div className="text-[9px] text-gray-400">{new Date(a.loggedAt).toLocaleDateString()}</div>
+                <div className="text-xs font-medium text-foreground/90">{a.activityLabel}</div>
+                <div className="text-[9px] text-muted-foreground">{new Date(a.loggedAt).toLocaleDateString()}</div>
               </div>
               <div className="text-xs font-semibold" style={{ color }}>{a.co2Amount.toFixed(2)} kg</div>
             </div>
           ))}
-          {activities.length === 0 && <p className="text-sm text-gray-400 text-center py-6">No activities logged yet.</p>}
+          {activities.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.noActivities")}</p>}
         </div>
       </>
     ),
     energy: (
       <>
-        <p className="text-xl font-bold text-gray-900 mb-4">Energy Breakdown</p>
+        <p className="text-xl font-bold text-foreground mb-4">{t("dashboard.energyUsage")}</p>
         {["transport", "energy", "food", "shopping"].map(cat => {
           const val  = activities.filter(a => a.category === cat).reduce((s, a) => s + a.co2Amount, 0);
           const icons: Record<string, string> = { transport: "🚗", energy: "⚡", food: "🥩", shopping: "🛍️" };
           return (
-            <div key={cat} className="flex items-center justify-between py-3 border-b border-gray-100">
-              <span className="text-sm text-gray-600">{icons[cat]} {cat}</span>
+            <div key={cat} className="flex items-center justify-between py-3 border-b border-border/40">
+              <span className="text-sm text-foreground/80">{icons[cat]} {t(`logActivity.categories.${cat}`)}</span>
               <span className="text-sm font-bold" style={{ color }}>{val.toFixed(2)} kg CO₂</span>
             </div>
           );
@@ -353,17 +278,17 @@ function DetailModal({ module, onClose, color, totalCo2, dailyAverage, flightHou
     ),
     travel: (
       <>
-        <p className="text-xl font-bold text-gray-900 mb-5">Travel Impact Details</p>
+        <p className="text-xl font-bold text-foreground mb-5">{t("dashboard.travelImpact")}</p>
         <div className="space-y-4">
           {[
-            { Icon: Plane,    val: `${flightHours.toFixed(1)} hours`, sub: "equivalent commercial flight time" },
-            { Icon: TreePine, val: `${trees.toFixed(0)} trees`,       sub: "needed 1 year to absorb your CO₂" },
+            { Icon: Plane,    val: `${flightHours.toFixed(1)} hours`, sub: t("dashboard.flightEquiv") },
+            { Icon: TreePine, val: `${trees.toFixed(0)} ${t("dashboard.treesNeeded")}`,       sub: t("dashboard.treesNeeded") },
           ].map(({ Icon, val, sub }) => (
-            <div key={sub} className="flex items-center gap-4 rounded-xl p-4 bg-gray-50 border border-gray-100">
+            <div key={sub} className="flex items-center gap-4 rounded-xl p-4 bg-secondary/50 border border-border/50">
               <Icon className="w-7 h-7 shrink-0" style={{ color }} />
               <div>
-                <div className="text-xl font-black text-gray-900">{val}</div>
-                <div className="text-[10px] text-gray-400">{sub}</div>
+                <div className="text-xl font-black text-foreground">{val}</div>
+                <div className="text-[10px] text-muted-foreground">{sub}</div>
               </div>
             </div>
           ))}
@@ -372,20 +297,19 @@ function DetailModal({ module, onClose, color, totalCo2, dailyAverage, flightHou
     ),
     ecoscore: (
       <>
-        <p className="text-xl font-bold text-gray-900 mb-4">Your Eco Score</p>
+        <p className="text-xl font-bold text-foreground mb-4">{t("dashboard.ecoScore")}</p>
         <div className="flex flex-col items-center py-2 mb-4">
-          <div className="text-7xl font-black mb-1" style={{ color }}>{score}</div>
-          <div className="text-gray-400 text-sm">out of 100</div>
+          <div className="text-7xl font-black mb-1" style={{ color: getForestColor(score) }}>{score}</div>
+          <div className="text-muted-foreground text-sm">/ 100</div>
         </div>
         <div className="space-y-1">
           {[
-            { label: "Current Streak", value: `${streak} days 🔥` },
-            { label: "Rating",         value: score >= 70 ? "ECO HERO 🌟" : score >= 40 ? "IMPROVING 🌱" : "NEEDS WORK ⚠️" },
-            { label: "Tip",            value: "Log daily to improve your score" },
+            { label: t("dashboard.dayStreak", { streak }), value: `${streak} 🔥` },
+            { label: t("dashboard.ecoScore"),         value: score >= 70 ? t("dashboard.ratingHero") : score >= 40 ? t("dashboard.ratingImproving") : t("dashboard.ratingNeedsWork") },
           ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-center py-3 border-b border-gray-100">
-              <span className="text-sm text-gray-500">{label}</span>
-              <span className="text-sm font-semibold" style={{ color }}>{value}</span>
+            <div key={label} className="flex justify-between items-center py-3 border-b border-border/40">
+              <span className="text-sm text-muted-foreground">{label}</span>
+              <span className="text-sm font-semibold" style={{ color: getForestColor(score) }}>{value}</span>
             </div>
           ))}
         </div>
@@ -400,9 +324,9 @@ function DetailModal({ module, onClose, color, totalCo2, dailyAverage, flightHou
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
       >
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
         <motion.div
-          className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-white"
+          className="relative z-10 w-full max-w-md p-6 rounded-3xl bg-card border border-border shadow-2xl"
           initial={{ scale: 0.88, y: 20, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.88, y: 20, opacity: 0 }}
@@ -410,14 +334,14 @@ function DetailModal({ module, onClose, color, totalCo2, dailyAverage, flightHou
           onClick={e => e.stopPropagation()}
           style={{
             border: `1px solid ${color}25`,
-            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+            boxShadow: `0 20px 60px ${color}10`,
           }}
         >
           <button
-            className="absolute top-4 right-4 p-2 rounded-xl transition-colors hover:bg-gray-100"
+            className="absolute top-4 right-4 p-2 rounded-xl transition-colors hover:bg-muted"
             onClick={onClose}
           >
-            <X className="w-4 h-4 text-gray-400" />
+            <X className="w-4 h-4 text-muted-foreground" />
           </button>
           {panels[module!]}
         </motion.div>
@@ -433,14 +357,15 @@ function ChallengesStrip({ challenges, completions, onComplete, color }: {
   onComplete: (id: number) => void;
   color: string;
 }) {
+  const { t } = useTranslation();
   const done = new Set(completions.map(c => c.challengeId));
 
   return (
     <div className="px-4 md:px-6 pb-8">
       <div className="flex items-center gap-2 mb-4">
         <Trophy className="w-4 h-4" style={{ color }} />
-        <span className="text-xs font-bold tracking-[0.22em] uppercase text-gray-500">Active Challenges</span>
-        <span className="text-xs text-gray-400 ml-1">— tap to complete</span>
+        <span className="text-xs font-bold tracking-[0.22em] uppercase text-foreground/80">{t("dashboard.activeChallenges")}</span>
+        <span className="text-xs text-muted-foreground ml-1">{t("dashboard.tapToComplete")}</span>
       </div>
 
       <div
@@ -453,38 +378,38 @@ function ChallengesStrip({ challenges, completions, onComplete, color }: {
           return (
             <motion.div
               key={ch.id}
-              className="flex-shrink-0 w-48 rounded-2xl p-4 cursor-pointer bg-white"
+              className={cn(
+                "flex-shrink-0 w-48 rounded-2xl p-4 cursor-pointer backdrop-blur-md transition-all duration-200",
+                completed
+                  ? "bg-primary/10 border border-primary/30"
+                  : "bg-card border border-border"
+              )}
               animate={{ y: [0, -4, 0] }}
               transition={{ duration: 3 + i * 0.3, repeat: Infinity, ease: "easeInOut", delay: i * 0.12 }}
               whileHover={{
-                scale: 1.06, y: -8,
-                boxShadow: "0 12px 32px rgba(0,0,0,0.13)",
+                scale: 1.05, y: -6,
+                boxShadow: `0 12px 32px ${c}12`,
                 transition: { duration: 0.18 },
               }}
               whileTap={{ scale: 0.97 }}
               onClick={() => !completed && onComplete(ch.id)}
-              style={{
-                border: "1px solid #e5e7eb",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-                background: completed ? "#f0fdf4" : "white",
-              }}
             >
               <div className="flex items-start justify-between mb-2">
                 <span className="text-2xl">{ch.icon}</span>
                 {completed
-                  ? <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  : <Circle className="w-4 h-4 text-gray-200" />
+                  ? <CheckCircle2 className="w-4 h-4 text-primary" />
+                  : <Circle className="w-4 h-4 text-border" />
                 }
               </div>
-              <div className="text-xs font-semibold text-gray-800 mb-1 leading-tight">{ch.title}</div>
-              <div className="text-[9px] text-gray-400 mb-2 leading-tight">{ch.description}</div>
+              <div className="text-xs font-semibold text-foreground mb-1 leading-tight">{ch.title}</div>
+              <div className="text-[9px] text-muted-foreground mb-2 leading-tight">{ch.description}</div>
               <div className="text-[10px] font-bold" style={{ color: c }}>-{ch.co2Reduction} kg CO₂</div>
-              <div className="text-[8px] text-gray-300 mt-0.5 capitalize">{ch.difficulty}</div>
+              <div className="text-[8px] text-muted-foreground/60 mt-0.5 capitalize">{ch.difficulty}</div>
             </motion.div>
           );
         })}
         {challenges.length === 0 && (
-          <p className="text-sm text-gray-400 py-4">No challenges available.</p>
+          <p className="text-sm text-muted-foreground py-4">{t("dashboard.noActivities")}</p>
         )}
       </div>
     </div>
@@ -495,6 +420,7 @@ function ChallengesStrip({ challenges, completions, onComplete, color }: {
 function QuickLogFAB({ color, sessionId, onLogged }: {
   color: string; sessionId: string; onLogged: () => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen]   = useState(false);
   const [km, setKm]       = useState("");
   const [kwh, setKwh]     = useState("");
@@ -514,10 +440,10 @@ function QuickLogFAB({ color, sessionId, onLogged }: {
       await Promise.all(tasks);
       setKm(""); setKwh(""); setMeals("");
       setOpen(false);
-      toast({ title: "Logged ✓", description: "Emissions recorded." });
+      toast({ title: t("logActivity.success"), description: "Emissions recorded." });
       onLogged();
     } catch {
-      toast({ title: "Failed to log", variant: "destructive" });
+      toast({ title: t("logActivity.error"), variant: "destructive" });
     } finally { setBusy(false); }
   };
 
@@ -526,18 +452,17 @@ function QuickLogFAB({ color, sessionId, onLogged }: {
       <AnimatePresence>
         {open && (
           <motion.div
-            className="absolute bottom-16 right-0 w-72 p-5 rounded-3xl bg-white"
+            className="absolute bottom-16 right-0 w-72 p-5 rounded-3xl bg-card border border-border shadow-lg"
             initial={{ opacity: 0, y: 10, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.94 }}
             transition={{ type: "spring", damping: 22, stiffness: 300 }}
             style={{
-              border: `1px solid ${color}25`,
-              boxShadow: "0 16px 48px rgba(0,0,0,0.13)",
+              boxShadow: `0 16px 48px ${color}20`,
             }}
           >
-            <div className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Plus className="w-4 h-4" style={{ color }} /> Quick Log
+            <div className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+              <Plus className="w-4 h-4" style={{ color }} /> {t("dashboard.quickLog")}
             </div>
             <div className="space-y-2.5">
               {[
@@ -551,7 +476,7 @@ function QuickLogFAB({ color, sessionId, onLogged }: {
                   placeholder={placeholder}
                   value={value}
                   onChange={e => set(e.target.value)}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 bg-gray-50 text-gray-800 outline-none focus:border-emerald-400 focus:bg-white transition-colors"
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-muted/30 text-foreground outline-none focus:border-emerald-400 focus:bg-background transition-colors"
                 />
               ))}
               <motion.button
@@ -564,10 +489,10 @@ function QuickLogFAB({ color, sessionId, onLogged }: {
                   background: color,
                   opacity: busy ? 0.65 : 1,
                   cursor: busy ? "not-allowed" : "pointer",
-                  boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                  boxShadow: `0 4px 14px ${color}30`,
                 }}
               >
-                {busy ? "Logging…" : "Log Emissions"}
+                {busy ? t("dashboard.logging") : t("dashboard.logEmissions")}
               </motion.button>
             </div>
           </motion.div>
@@ -576,8 +501,8 @@ function QuickLogFAB({ color, sessionId, onLogged }: {
 
       <motion.button
         className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold shadow-lg"
-        style={{ background: color, boxShadow: "0 6px 20px rgba(0,0,0,0.18)" }}
-        whileHover={{ scale: 1.1, boxShadow: "0 10px 28px rgba(0,0,0,0.22)", transition: { duration: 0.18 } }}
+        style={{ background: color, boxShadow: `0 6px 20px ${color}30` }}
+        whileHover={{ scale: 1.1, boxShadow: `0 10px 28px ${color}45`, transition: { duration: 0.18 } }}
         whileTap={{ scale: 0.93 }}
         onClick={() => setOpen(o => !o)}
       >
@@ -589,20 +514,14 @@ function QuickLogFAB({ color, sessionId, onLogged }: {
   );
 }
 
-// ─── CSS Globe Fallback ───────────────────────────────────────────────────────
-function hasWebGL() {
-  try {
-    const c  = document.createElement("canvas");
-    return !!(c.getContext("webgl") ?? c.getContext("experimental-webgl"));
-  } catch { return false; }
-}
-
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function Dashboard() {
+  const { t } = useTranslation();
   const sessionId   = useSessionId();
   const queryClient = useQueryClient();
   const [activeModule, setActiveModule] = useState<ModuleKey>(null);
-  const [webGL] = useState(() => typeof window !== "undefined" ? hasWebGL() : false);
+  const [selectedRegion, setSelectedRegion] = useState<string>("My Profile");
+  const [hasLogged, setHasLogged] = useLogState();
 
   const summaryQ = useGetActivitySummary(
     { sessionId: sessionId!, days: 7 },
@@ -614,7 +533,7 @@ export default function Dashboard() {
   );
   const streakQ = useGetActivityStreak(
     { sessionId: sessionId! },
-    { query: { enabled: !!sessionId } }
+    { query: { enabled: !!sessionId, queryKey: getGetActivityStreakQueryKey({ sessionId: sessionId! }) } }
   );
   const challengesQ = useListChallenges(
     { query: { queryKey: getListChallengesQueryKey() } }
@@ -631,18 +550,143 @@ export default function Dashboard() {
     },
   });
 
-  const totalCo2     = summaryQ.data?.totalCo2            ?? 0;
-  const dailyAverage = summaryQ.data?.dailyAverage         ?? 0;
-  const trees        = summaryQ.data?.treeEquivalent        ?? 0;
-  const flightHours  = summaryQ.data?.flightHoursEquivalent ?? 0;
-  const activities   = activitiesQ.data ?? [];
-  const streak       = streakQ.data?.currentStreak          ?? 0;
-  const challenges   = challengesQ.data ?? [];
-  const completions  = completionsQ.data ?? [];
+  // Region mock data database
+  const regionData: Record<string, {
+    totalCo2: number;
+    dailyAverage: number;
+    trees: number;
+    flightHours: number;
+    ecoScore: number;
+    carbonLevel: CarbonLevel;
+    color: string;
+    activities: { category: string; co2Amount: number }[];
+  }> = {
+    "Global": {
+      totalCo2: 48.5,
+      dailyAverage: 6.9,
+      trees: 5,
+      flightHours: 2.4,
+      ecoScore: 76,
+      carbonLevel: "medium",
+      color: "#F97316",
+      activities: [
+        { category: "transport", co2Amount: 18.2 },
+        { category: "energy", co2Amount: 15.1 },
+        { category: "food", co2Amount: 10.2 },
+        { category: "shopping", co2Amount: 5.0 },
+      ]
+    },
+    "North America": {
+      totalCo2: 120.2,
+      dailyAverage: 17.1,
+      trees: 12,
+      flightHours: 6.0,
+      ecoScore: 40,
+      carbonLevel: "high",
+      color: "#DC2626",
+      activities: [
+        { category: "transport", co2Amount: 50.4 },
+        { category: "energy", co2Amount: 38.2 },
+        { category: "food", co2Amount: 20.1 },
+        { category: "shopping", co2Amount: 11.5 },
+      ]
+    },
+    "Europe": {
+      totalCo2: 62.4,
+      dailyAverage: 8.9,
+      trees: 6,
+      flightHours: 3.1,
+      ecoScore: 69,
+      carbonLevel: "medium",
+      color: "#F97316",
+      activities: [
+        { category: "transport", co2Amount: 22.1 },
+        { category: "energy", co2Amount: 18.5 },
+        { category: "food", co2Amount: 14.3 },
+        { category: "shopping", co2Amount: 7.5 },
+      ]
+    },
+    "Asia-Pacific": {
+      totalCo2: 35.1,
+      dailyAverage: 5.0,
+      trees: 3,
+      flightHours: 1.8,
+      ecoScore: 82,
+      carbonLevel: "low",
+      color: "#22C55E",
+      activities: [
+        { category: "transport", co2Amount: 12.0 },
+        { category: "energy", co2Amount: 10.1 },
+        { category: "food", co2Amount: 8.5 },
+        { category: "shopping", co2Amount: 4.5 },
+      ]
+    },
+    "South Asia": {
+      totalCo2: 28.5,
+      dailyAverage: 4.1,
+      trees: 3,
+      flightHours: 1.4,
+      ecoScore: 85,
+      carbonLevel: "low",
+      color: "#22C55E",
+      activities: [
+        { category: "transport", co2Amount: 8.5 },
+        { category: "energy", co2Amount: 9.0 },
+        { category: "food", co2Amount: 7.0 },
+        { category: "shopping", co2Amount: 4.0 },
+      ]
+    },
+    "Australia": {
+      totalCo2: 55.8,
+      dailyAverage: 8.0,
+      trees: 6,
+      flightHours: 2.8,
+      ecoScore: 72,
+      carbonLevel: "medium",
+      color: "#F97316",
+      activities: [
+        { category: "transport", co2Amount: 20.3 },
+        { category: "energy", co2Amount: 16.5 },
+        { category: "food", co2Amount: 12.0 },
+        { category: "shopping", co2Amount: 7.0 },
+      ]
+    }
+  };
 
-  const carbonLevel = getCarbonLevel(totalCo2);
-  const color       = CARBON_COLORS[carbonLevel];
-  const ecoScore    = Math.max(0, Math.min(100, Math.round(100 - totalCo2 / 2)));
+  const myTotalCo2     = summaryQ.data?.totalCo2            ?? 0;
+  const myDailyAverage = summaryQ.data?.dailyAverage         ?? 0;
+  const myTrees        = summaryQ.data?.treeEquivalent        ?? 0;
+  const myFlightHours  = summaryQ.data?.flightHoursEquivalent ?? 0;
+  const myActivities   = activitiesQ.data ?? [];
+  const streak         = streakQ.data?.currentStreak          ?? 0;
+  const challenges     = challengesQ.data ?? [];
+  const completions    = completionsQ.data ?? [];
+  
+  const myCarbonColor = getCarbonColor(myTotalCo2);
+  const myCarbonLevel = getCarbonLevel(myTotalCo2);
+  const myEcoScore    = Math.max(0, Math.min(100, Math.round(100 - myTotalCo2 / 2)));
+
+  // Resolve active stats based on selection
+  const isMyProfile = selectedRegion === "My Profile";
+  const activeStats = isMyProfile 
+    ? {
+        totalCo2: myTotalCo2,
+        dailyAverage: myDailyAverage,
+        trees: myTrees,
+        flightHours: myFlightHours,
+        ecoScore: myEcoScore,
+        carbonLevel: myCarbonLevel,
+        color: myCarbonColor,
+        activities: myActivities
+      }
+    : {
+        ...regionData[selectedRegion],
+        activities: regionData[selectedRegion].activities.map(a => ({
+          ...a,
+          activityLabel: t(`logActivity.categories.${a.category}`),
+          loggedAt: new Date().toISOString()
+        }))
+      };
 
   const invalidateAll = () => {
     if (!sessionId) return;
@@ -651,103 +695,75 @@ export default function Dashboard() {
   };
 
   const globeBg = {
-    low:    "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #ecfdf5 100%)",
-    medium: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%)",
-    high:   "linear-gradient(135deg, #fff5f5 0%, #fee2e2 50%, #fff5f5 100%)",
-  }[carbonLevel];
+    low:    "linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(246,255,249,0.3) 100%)",
+    medium: "linear-gradient(135deg, rgba(249,115,22,0.08) 0%, rgba(246,255,249,0.3) 100%)",
+    high:   "linear-gradient(135deg, rgba(220,38,38,0.08) 0%, rgba(246,255,249,0.3) 100%)",
+  }[activeStats.carbonLevel];
 
-  const vignette = {
-    low:    "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 25%, #ecfdf5 80%)",
-    medium: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 25%, #fffbeb 80%)",
-    high:   "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 25%, #fff5f5 80%)",
-  }[carbonLevel];
+  const ratingKey = activeStats.carbonLevel === "low" ? "ratingHero" : activeStats.carbonLevel === "medium" ? "ratingImproving" : "ratingNeedsWork";
 
   return (
-    <div className="relative bg-background" style={{ minHeight: "100dvh" }}>
+    <div className="relative space-y-4">
+      {/* ── Compact Globe & Stats Grid (SaaS-style) ── */}
+      <div className="relative saas-card overflow-hidden p-6 flex flex-col lg:flex-row items-center gap-6" style={{ background: globeBg }}>
+        {/* Globe Visual Area */}
+        <div className="relative w-full lg:w-1/3 h-[240px] shrink-0 flex flex-col items-center justify-center bg-black/5 rounded-2xl border border-border/40">
+          <GlobeCard 
+            level={activeStats.carbonLevel} 
+            onRegionSelect={(r) => setSelectedRegion(r)} 
+            selectedRegion={selectedRegion}
+          />
+          
+          {/* Status badge / reset overlaid on globe */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-center pointer-events-auto z-10 flex flex-col items-center gap-1.5">
+            <div className="text-[9px] font-bold tracking-[0.2em] uppercase text-muted-foreground">{t("dashboard.carbonStatus")}</div>
+            <div className="flex gap-2">
+              <span
+                className="text-[10px] px-3 py-1 rounded-full font-bold tracking-wider inline-block bg-card border border-border shadow-lg"
+                style={{ color: activeStats.color }}
+              >
+                {t(`dashboard.${ratingKey}`)}
+              </span>
+              {!isMyProfile && (
+                <button
+                  onClick={() => setSelectedRegion("My Profile")}
+                  className="flex items-center gap-1 text-[9px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-full hover:bg-primary/20 transition-colors shadow-lg"
+                >
+                  <RefreshCw className="w-2.5 h-2.5" />
+                  My Profile
+                </button>
+              )}
+            </div>
+          </div>
 
-      {/* ── Globe Hero ── */}
-      <div className="relative" style={{ height: "clamp(300px, 60vh, 640px)", background: globeBg }}>
-
-        {/* Globe */}
-        <div className="absolute inset-0">
-          {webGL
-            ? <GlobeScene level={carbonLevel} />
-            : (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="rounded-full" style={{
-                  width: 220, height: 220,
-                  background: "radial-gradient(circle at 34% 30%, #1a5f4a 0%, #0c3a20 60%, #071a0e 100%)",
-                  boxShadow: `0 0 50px ${color}22, 0 20px 40px rgba(0,0,0,0.1)`,
-                }} />
-              </div>
-            )
-          }
+          {/* Region title helper */}
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-card border border-border px-2.5 py-1 rounded-lg">
+            <GlobeIcon className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-[10px] font-bold text-foreground">{selectedRegion}</span>
+          </div>
         </div>
 
-        {/* Vignette fade to bg color */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: vignette }} />
-
-        {/* Status badge */}
-        <div className="absolute top-5 left-1/2 -translate-x-1/2 pointer-events-none z-10 text-center">
-          <motion.div
-            className="text-[9px] font-bold tracking-[0.3em] uppercase mb-1 text-gray-500"
-            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          >
-            Carbon Status
-          </motion.div>
-          <motion.div
-            className="text-[10px] px-3 py-1 rounded-full font-bold tracking-widest"
-            style={{ color, background: `${color}14`, border: `1px solid ${color}30` }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            {CARBON_LABELS[carbonLevel]}
-          </motion.div>
-        </div>
-
-        {/* Carbon Tracker — top-left */}
-        <div className="absolute top-14 left-2 md:top-16 md:left-5 z-10">
+        {/* Stats Grid */}
+        <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 self-stretch">
           <CarbonTrackerCard
-            totalCo2={totalCo2} dailyAverage={dailyAverage}
-            level={carbonLevel} color={color}
+            totalCo2={activeStats.totalCo2} dailyAverage={activeStats.dailyAverage}
+            level={activeStats.carbonLevel} color={activeStats.color}
             onClick={() => setActiveModule("carbon")}
           />
+          <EcoScoreCard score={activeStats.ecoScore} streak={streak} color={activeStats.color} onClick={() => setActiveModule("ecoscore")} />
+          <EnergyUsageCard activities={activeStats.activities} color={activeStats.color} onClick={() => setActiveModule("energy")} />
+          <TravelImpactCard flightHours={activeStats.flightHours} trees={activeStats.trees} color={activeStats.color} onClick={() => setActiveModule("travel")} />
         </div>
-
-        {/* Eco Score — top-right */}
-        <div className="absolute top-14 right-2 md:top-16 md:right-5 z-10">
-          <EcoScoreCard score={ecoScore} streak={streak} color={color} onClick={() => setActiveModule("ecoscore")} />
-        </div>
-
-        {/* Energy Usage — desktop bottom-left */}
-        <div className="hidden md:block absolute bottom-6 left-5 z-10">
-          <EnergyUsageCard activities={activities} color={color} onClick={() => setActiveModule("energy")} />
-        </div>
-
-        {/* Travel Impact — desktop bottom-right */}
-        <div className="hidden md:block absolute bottom-6 right-5 z-10">
-          <TravelImpactCard flightHours={flightHours} trees={trees} color={color} onClick={() => setActiveModule("travel")} />
-        </div>
-      </div>
-
-      {/* Mobile: Energy + Travel below globe */}
-      <div className="md:hidden grid grid-cols-2 gap-2.5 px-2.5 mt-2.5">
-        <EnergyUsageCard activities={activities} color={color} onClick={() => setActiveModule("energy")} />
-        <TravelImpactCard flightHours={flightHours} trees={trees} color={color} onClick={() => setActiveModule("travel")} />
       </div>
 
       {/* Living Forest System */}
-      <div className="mt-5 mb-2">
-        <LivingForest score={ecoScore} />
+      <div className="mt-3">
+        <LivingForest score={activeStats.ecoScore} isRed={hasLogged} />
       </div>
-
-      {/* Divider */}
-      <div className="mx-4 md:mx-6 my-4 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color}30, transparent)` }} />
 
       {/* Challenges */}
       <ChallengesStrip
-        challenges={challenges} completions={completions} color={color}
+        challenges={challenges} completions={completions} color={activeStats.color}
         onComplete={id => {
           if (!sessionId || completeChallenge.isPending) return;
           completeChallenge.mutate({ id, data: { sessionId } });
@@ -755,15 +771,24 @@ export default function Dashboard() {
       />
 
       {/* FAB */}
-      {sessionId && <QuickLogFAB color={color} sessionId={sessionId} onLogged={invalidateAll} />}
+      {sessionId && (
+        <QuickLogFAB
+          color={activeStats.color}
+          sessionId={sessionId}
+          onLogged={() => {
+            setHasLogged(true);
+            invalidateAll();
+          }}
+        />
+      )}
 
       {/* Detail Modal */}
       {activeModule && (
         <DetailModal
           module={activeModule} onClose={() => setActiveModule(null)}
-          color={color} totalCo2={totalCo2} dailyAverage={dailyAverage}
-          flightHours={flightHours} trees={trees} streak={streak}
-          score={ecoScore} activities={activities}
+          color={activeStats.color} totalCo2={activeStats.totalCo2} dailyAverage={activeStats.dailyAverage}
+          flightHours={activeStats.flightHours} trees={activeStats.trees} streak={streak}
+          score={activeStats.ecoScore} activities={activeStats.activities}
         />
       )}
     </div>

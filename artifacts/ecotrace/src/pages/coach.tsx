@@ -7,9 +7,9 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Sparkles, RefreshCw, Leaf, Zap, ShoppingBag, Car, Home, ChevronRight, Target } from "lucide-react";
+import { Sparkles, RefreshCw, Leaf, Zap, ShoppingBag, Car, Home, Target, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface CoachTip {
   category: string;
@@ -26,39 +26,61 @@ interface CoachAdvice {
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  transport: <Car className="h-4 w-4" />,
-  food: <Leaf className="h-4 w-4" />,
-  energy: <Home className="h-4 w-4" />,
-  shopping: <ShoppingBag className="h-4 w-4" />,
+  transport: <Car className="h-3.5 w-3.5" />,
+  food: <Leaf className="h-3.5 w-3.5" />,
+  energy: <Home className="h-3.5 w-3.5" />,
+  shopping: <ShoppingBag className="h-3.5 w-3.5" />,
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  transport: "bg-blue-100 text-blue-700 border-blue-200",
-  food: "bg-green-100 text-green-700 border-green-200",
-  energy: "bg-amber-100 text-amber-700 border-amber-200",
-  shopping: "bg-purple-100 text-purple-700 border-purple-200",
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  transport: "Transport",
-  food: "Food & Diet",
-  energy: "Home Energy",
-  shopping: "Shopping",
+// Elegant, theme-aware category borders and tags
+const CATEGORY_STYLES: Record<string, { tag: string; border: string; glow: string }> = {
+  transport: {
+    tag: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
+    border: "border-l-sky-500 dark:border-l-sky-500/80",
+    glow: "shadow-[0_0_15px_rgba(14,165,233,0.08)]",
+  },
+  food: {
+    tag: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    border: "border-l-emerald-500 dark:border-l-emerald-500/80",
+    glow: "shadow-[0_0_15px_rgba(16,185,129,0.08)]",
+  },
+  energy: {
+    tag: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    border: "border-l-amber-500 dark:border-l-amber-500/80",
+    glow: "shadow-[0_0_15px_rgba(245,158,11,0.08)]",
+  },
+  shopping: {
+    tag: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+    border: "border-l-purple-500 dark:border-l-purple-500/80",
+    glow: "shadow-[0_0_15px_rgba(168,85,247,0.08)]",
+  },
 };
 
 const EFFORT_COLORS: Record<string, string> = {
-  low: "bg-emerald-100 text-emerald-700",
-  medium: "bg-amber-100 text-amber-700",
-  high: "bg-rose-100 text-rose-700",
+  low: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+  medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+  high: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20",
 };
 
-const EFFORT_LABELS: Record<string, string> = {
-  low: "Easy win",
-  medium: "Some effort",
-  high: "Big change",
+// Framer motion variants for premium transitions
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 15 } },
 };
 
 export default function Coach() {
+  const { t } = useTranslation();
   const sessionId = useSessionId();
   const [advice, setAdvice] = useState<CoachAdvice | null>(null);
   const [loading, setLoading] = useState(false);
@@ -83,12 +105,12 @@ export default function Coach() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Couldn't reach the coach right now — please try again.");
+        setError(data.error ?? t("coachPage.errorMsg"));
         return;
       }
       setAdvice(data as CoachAdvice);
     } catch {
-      setError("Couldn't reach the coach right now — please try again.");
+      setError(t("coachPage.errorMsg"));
     } finally {
       setLoading(false);
     }
@@ -96,192 +118,268 @@ export default function Coach() {
 
   const vs = summary
     ? summary.dailyAverage < summary.globalAverage
-      ? `${((1 - summary.dailyAverage / summary.globalAverage) * 100).toFixed(0)}% below global average`
-      : `${((summary.dailyAverage / summary.globalAverage - 1) * 100).toFixed(0)}% above global average`
+      ? t("coachPage.belowAvg", { pct: ((1 - summary.dailyAverage / summary.globalAverage) * 100).toFixed(0) })
+      : t("coachPage.aboveAvg", { pct: ((summary.dailyAverage / summary.globalAverage - 1) * 100).toFixed(0) })
     : null;
 
+  // Determine forest growth visual based on carbon performance
+  // dailyAverage < globalAverage means good score!
+  const isPerformingWell = summary ? summary.dailyAverage <= summary.globalAverage : true;
+  const ecoScore = summary
+    ? Math.min(100, Math.max(10, Math.round((summary.globalAverage / (summary.dailyAverage || 1)) * 50)))
+    : 50;
+
+  const forestGrowthEmoji = ecoScore <= 30 ? "🌱" : ecoScore <= 55 ? "🌿" : ecoScore <= 75 ? "🌳" : "🌲";
+
   return (
-    <div className="p-6 md:p-8 max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Sparkles className="h-5 w-5 text-primary" />
+    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-[var(--eco-primary)]/10 dark:bg-[var(--eco-primary)]/20 flex items-center justify-center shadow-[0_0_15px_rgba(22,163,74,0.15)] border border-[var(--eco-primary)]/20">
+            <Sparkles className="h-5 w-5 text-[var(--eco-primary)] animate-pulse" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">AI Coach</h1>
-            <p className="text-muted-foreground text-sm">Personalized tips based on your actual data</p>
+            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground to-emerald-600 dark:to-emerald-400 bg-clip-text text-transparent">
+              {t("coachPage.title")}
+            </h1>
+            <p className="text-muted-foreground text-xs mt-0.5">{t("coachPage.desc")}</p>
           </div>
         </div>
       </div>
 
-      {/* Stats preview */}
+      {/* Stats Preview: Upgraded to Glassmorphism Card */}
       {summary && (
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card border rounded-2xl p-5 mb-6"
+          className="saas-card relative overflow-hidden border border-border/60 shadow-[var(--shadow-soft)] p-5"
         >
-          <p className="text-sm font-medium text-muted-foreground mb-3">Your last 30 days</p>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <div className="text-2xl font-bold">{summary.totalCo2.toFixed(1)}<span className="text-sm font-normal text-muted-foreground ml-1">kg</span></div>
-              <div className="text-xs text-muted-foreground mt-0.5">Total CO₂</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{summary.dailyAverage.toFixed(1)}<span className="text-sm font-normal text-muted-foreground ml-1">kg/day</span></div>
-              <div className="text-xs text-muted-foreground mt-0.5">Daily avg</div>
-            </div>
-            <div>
-              <div className={cn("text-sm font-semibold mt-1", summary.dailyAverage < summary.globalAverage ? "text-green-600" : "text-amber-600")}>
-                {vs}
+          {/* Subtle Glows */}
+          <div className="absolute right-0 top-0 w-24 h-24 bg-[var(--eco-primary)]/5 rounded-full blur-2xl pointer-events-none" />
+
+          <p className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-3">
+            {t("coachPage.last30days")}
+          </p>
+
+          <div className="grid grid-cols-3 gap-4 relative z-10">
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground block">{t("coachPage.totalCo2")}</span>
+              <div className="text-xl font-bold flex items-baseline">
+                {summary.totalCo2.toFixed(1)}
+                <span className="text-xs font-medium text-muted-foreground ml-1">kg</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5">vs. global</div>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground block">{t("coachPage.dailyAvg")}</span>
+              <div className="text-xl font-bold flex items-baseline">
+                {summary.dailyAverage.toFixed(1)}
+                <span className="text-xs font-medium text-muted-foreground ml-1">kg/d</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] text-muted-foreground block">{t("coachPage.vsGlobal")}</span>
+              <div>
+                <span className={cn(
+                  "text-xs font-bold px-2 py-0.5 rounded-full",
+                  summary.dailyAverage < summary.globalAverage
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                )}>
+                  {vs}
+                </span>
+              </div>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* CTA before first request */}
+      {/* CTA before first request: Replaced with Animated Forest Growth Intro */}
       {!hasAsked && (
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-2xl p-8 text-center mb-6"
+          className="saas-card p-8 text-center relative overflow-hidden border border-emerald-500/20 dark:border-emerald-500/30 shadow-[0_4px_30px_rgba(22,163,74,0.05)] bg-[var(--bg-glass)] backdrop-blur-xl"
         >
-          <div className="text-4xl mb-4">🌱</div>
-          <h2 className="text-xl font-semibold mb-2">Ready for your personalised plan?</h2>
-          <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
-            Your AI coach will analyse your footprint data and generate 3 targeted tips — specific to your biggest impact areas.
+          {/* Decorative glowing gradient spheres */}
+          <div className="absolute -right-24 -top-24 w-48 h-48 bg-[var(--eco-primary)]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-24 -bottom-24 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Plant Growth animation container */}
+          <div className="relative w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+            <div className="absolute inset-0 bg-[var(--eco-primary)]/10 rounded-full blur-xl animate-pulse" />
+            <motion.div
+              initial={{ scale: 0.5, rotate: -20 }}
+              animate={{ 
+                scale: [0.9, 1.1, 0.9],
+                rotate: [0, 6, -6, 0]
+              }}
+              transition={{ 
+                scale: { repeat: Infinity, duration: 4, ease: "easeInOut" },
+                rotate: { repeat: Infinity, duration: 5, ease: "easeInOut" }
+              }}
+              className="relative z-10 text-5xl select-none"
+            >
+              {forestGrowthEmoji}
+            </motion.div>
+          </div>
+
+          <h2 className="text-lg font-bold mb-2 tracking-tight text-foreground">{t("coachPage.readyTitle")}</h2>
+          <p className="text-muted-foreground text-xs mb-6 max-w-sm mx-auto leading-relaxed">
+            {t("coachPage.readyDesc")}
           </p>
+
           <Button
-            size="lg"
-            className="gap-2 px-8 rounded-xl"
+            size="default"
+            className="interactive gap-2 px-8 py-5 bg-[var(--eco-primary)] hover:bg-[var(--eco-best)] text-white font-semibold text-xs rounded-xl shadow-md hover:shadow-[var(--glow-green)] transition-all duration-300"
             onClick={fetchAdvice}
             disabled={loading || !sessionId}
           >
-            <Sparkles className="h-5 w-5" />
-            Get My Personalised Tips
+            <Sparkles className="h-4 w-4" />
+            {t("coachPage.getCta")}
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </motion.div>
       )}
 
-      {/* Loading skeleton */}
+      {/* Loading Skeleton */}
       {loading && (
         <div className="space-y-4">
-          <Skeleton className="h-28 w-full rounded-2xl" />
-          <Skeleton className="h-36 w-full rounded-2xl" />
-          <Skeleton className="h-36 w-full rounded-2xl" />
-          <Skeleton className="h-36 w-full rounded-2xl" />
-          <Skeleton className="h-20 w-full rounded-2xl" />
+          <Skeleton className="h-28 w-full rounded-2xl bg-muted/40" />
+          <Skeleton className="h-16 w-full rounded-2xl bg-muted/40" />
+          <Skeleton className="h-24 w-full rounded-2xl bg-muted/40" />
+          <Skeleton className="h-24 w-full rounded-2xl bg-muted/40" />
+          <Skeleton className="h-20 w-full rounded-2xl bg-muted/40" />
         </div>
       )}
 
       {/* Error state */}
       {error && !loading && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-5 text-center mb-6">
-          <p className="text-destructive font-medium mb-3">{error}</p>
-          <Button variant="outline" onClick={fetchAdvice} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Try Again
+        <div className="saas-card border border-destructive/20 bg-destructive/5 rounded-2xl p-6 text-center shadow-lg">
+          <p className="text-destructive font-semibold text-sm mb-4">{error}</p>
+          <Button variant="outline" size="sm" onClick={fetchAdvice} className="gap-2 rounded-xl border-destructive/20 hover:bg-destructive/10 text-destructive">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" /> {t("coachPage.tryAgain")}
           </Button>
         </div>
       )}
 
-      {/* Advice results */}
+      {/* Advice results with Premium animations */}
       <AnimatePresence>
         {advice && !loading && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="space-y-5"
           >
-            {/* Coach message */}
+            {/* AI Coach Chat Bubble - Elevated glassmorphism with glowing ring */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="bg-primary text-primary-foreground rounded-2xl p-6"
+              variants={itemVariants}
+              className="saas-card relative overflow-hidden border border-[var(--eco-primary)]/20 bg-[var(--bg-glass)] shadow-[0_0_25px_rgba(22,163,74,0.06)] backdrop-blur-xl rounded-2xl p-5"
             >
-              <div className="flex gap-3">
-                <div className="text-2xl flex-shrink-0">🤖</div>
-                <div>
-                  <p className="font-medium text-sm opacity-75 mb-1">Your AI Coach says</p>
-                  <p className="leading-relaxed">{advice.message}</p>
+              {/* Pulsing indicator */}
+              <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                Active Coach
+              </div>
+
+              <div className="flex gap-4">
+                {/* AI Avatar */}
+                <div className="h-10 w-10 shrink-0 rounded-xl bg-gradient-to-tr from-[var(--eco-primary)] to-emerald-400 flex items-center justify-center shadow-md relative">
+                  <span className="text-lg">🤖</span>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="font-bold text-xs text-[var(--eco-primary)] uppercase tracking-widest">{t("coachPage.says")}</p>
+                  <p className="text-sm leading-relaxed text-foreground font-medium">{advice.message}</p>
                 </div>
               </div>
             </motion.div>
 
-            {/* Focus area */}
+            {/* Focus Area Opportunity Card */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-accent/10 border border-accent/20 rounded-2xl p-4 flex items-center gap-3"
+              variants={itemVariants}
+              className="saas-card flex items-center gap-4 border border-amber-500/20 bg-amber-500/5 shadow-sm rounded-2xl p-4"
             >
-              <Zap className="h-5 w-5 text-accent flex-shrink-0" />
+              <div className="h-9 w-9 shrink-0 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+                <Zap className="h-4.5 w-4.5 text-amber-500 animate-pulse" />
+              </div>
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">Biggest Opportunity</p>
-                <p className="font-medium">{advice.focusArea}</p>
+                <p className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-0.5">{t("coachPage.opportunity")}</p>
+                <p className="text-sm font-semibold text-foreground">{advice.focusArea}</p>
               </div>
             </motion.div>
 
-            {/* Tips */}
+            {/* Tips Section */}
             <div className="space-y-3">
-              {advice.tips.map((tip, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + i * 0.07 }}
-                  className="bg-card border rounded-2xl p-5 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold", CATEGORY_COLORS[tip.category] ?? "bg-muted text-muted-foreground border-muted")}>
-                      {CATEGORY_ICONS[tip.category]}
-                      {CATEGORY_LABELS[tip.category] ?? tip.category}
+              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground pl-1">Personalized Tips</h3>
+              {advice.tips.map((tip, i) => {
+                const styles = CATEGORY_STYLES[tip.category] || {
+                  tag: "bg-muted text-muted-foreground border-muted",
+                  border: "border-l-muted",
+                  glow: "",
+                };
+                return (
+                  <motion.div
+                    key={i}
+                    variants={itemVariants}
+                    className={cn(
+                      "saas-card border-l-4 hover:scale-[1.015] hover:shadow-md transition-all duration-300",
+                      styles.border,
+                      styles.glow
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-2.5">
+                      <div className={cn("flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider", styles.tag)}>
+                        {CATEGORY_ICONS[tip.category]}
+                        {t(`coachPage.categories.${tip.category}`) ?? tip.category}
+                      </div>
+                      <span className={cn("text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider", EFFORT_COLORS[tip.effort] ?? "bg-muted text-muted-foreground")}>
+                        {t(`coachPage.effort.${tip.effort}`) ?? tip.effort}
+                      </span>
                     </div>
-                    <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", EFFORT_COLORS[tip.effort] ?? "bg-muted text-muted-foreground")}>
-                      {EFFORT_LABELS[tip.effort] ?? tip.effort}
-                    </span>
-                  </div>
-                  <p className="font-medium leading-snug mb-2">{tip.tip}</p>
-                  <div className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
-                    <Leaf className="h-3.5 w-3.5" />
-                    {tip.impact}
-                  </div>
-                </motion.div>
-              ))}
+                    <p className="text-sm font-semibold leading-snug mb-3 text-foreground">{tip.tip}</p>
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                      <Leaf className="h-4 w-4 text-[var(--eco-primary)]" />
+                      {tip.impact}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
 
-            {/* Weekly goal */}
+            {/* Weekly Goal Card */}
             <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.38 }}
-              className="bg-card border-2 border-primary/20 rounded-2xl p-5"
+              variants={itemVariants}
+              className="saas-card relative overflow-hidden border border-[var(--eco-primary)]/20 bg-emerald-500/5 shadow-md rounded-2xl p-5"
             >
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="h-5 w-5 text-primary" />
-                <p className="font-semibold text-primary">Your Goal This Week</p>
+              <div className="absolute right-0 bottom-0 w-24 h-24 bg-[var(--eco-primary)]/5 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="flex items-center gap-2 mb-2 relative z-10">
+                <div className="h-7 w-7 rounded-lg bg-[var(--eco-primary)]/10 flex items-center justify-center border border-[var(--eco-primary)]/25">
+                  <Target className="h-4 w-4 text-[var(--eco-primary)]" />
+                </div>
+                <p className="font-bold text-sm text-[var(--eco-primary)] tracking-tight">{t("coachPage.weeklyGoalTitle")}</p>
               </div>
-              <p className="text-foreground leading-snug">{advice.weeklyGoal}</p>
+              <p className="text-sm text-foreground font-medium leading-relaxed relative z-10">{advice.weeklyGoal}</p>
             </motion.div>
 
-            {/* Refresh */}
+            {/* Refresh / Generate New */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.45 }}
+              variants={itemVariants}
               className="flex justify-center pt-2"
             >
               <Button
                 variant="outline"
+                size="sm"
                 onClick={fetchAdvice}
                 disabled={loading}
-                className="gap-2 rounded-xl"
+                className="gap-2 rounded-xl text-xs border-border/80 hover:bg-emerald-500/10 hover:text-[var(--eco-primary)] hover:border-[var(--eco-primary)]/30 px-5 py-4 transition-all duration-300"
               >
-                <RefreshCw className="h-4 w-4" />
-                Refresh Advice
+                <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                {t("coachPage.refresh")}
               </Button>
             </motion.div>
           </motion.div>

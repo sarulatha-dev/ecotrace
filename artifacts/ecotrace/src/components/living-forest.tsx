@@ -60,10 +60,20 @@ const STAGE_STYLES: Record<ForestStage, {
 };
 
 // ─── SVG Tree ─────────────────────────────────────────────────────────────────
+// ─── SVG Tree ─────────────────────────────────────────────────────────────────
 function Tree({
-  cx, stage, size = 1, delay = 0,
-}: { cx: number; stage: ForestStage; size?: number; delay?: number }) {
-  const s = STAGE_STYLES[stage];
+  cx, stage, size = 1, delay = 0, isRed,
+}: { cx: number; stage: ForestStage; size?: number; delay?: number; isRed?: boolean }) {
+  const s = isRed ? {
+    sky: "linear-gradient(180deg, #fee2e2 0%, #fef2f2 60%, #fca5a5 100%)",
+    ground: "linear-gradient(180deg, #ef4444 0%, #dc2626 100%)",
+    groundColor: "#dc2626",
+    treeFill: "#ef4444",
+    trunkColor: "#7f1d1d",
+    glowColor: "rgba(239,68,68,0.25)",
+    textColor: "#991b1b",
+    badgeBg: "rgba(239,68,68,0.12)",
+  } : STAGE_STYLES[stage];
   const h  = 44 * size;   // total height above ground-line (y=90)
   const tw = 32 * size;   // triangle half-width at base
   const sw = 22 * size;   // second layer half-width
@@ -142,9 +152,9 @@ function Tree({
 }
 
 // ─── Floating leaf particle ───────────────────────────────────────────────────
-function Leaf({ x, delay, stage }: { x: number; delay: number; stage: ForestStage }) {
+function Leaf({ x, delay, stage, isRed }: { x: number; delay: number; stage: ForestStage; isRed?: boolean }) {
   const colors = { growth: "#22c55e", forest: "#16a34a", dead: "#8b7355", sprout: "#4ade80" };
-  const c = colors[stage];
+  const c = isRed ? "#ef4444" : colors[stage];
   const drift = (Math.random() - 0.5) * 60;
   const rot   = Math.random() * 360;
 
@@ -161,19 +171,21 @@ function Leaf({ x, delay, stage }: { x: number; delay: number; stage: ForestStag
       }}
       transition={{ duration: 3 + Math.random() * 2, delay, repeat: Infinity, repeatDelay: Math.random() * 4, ease: "easeIn" }}
     >
-      {stage === "forest" ? "🍃" : "🌿"}
+      {isRed ? "🍁" : stage === "forest" ? "🍃" : "🌿"}
     </motion.div>
   );
 }
 
 // ─── Light ray ───────────────────────────────────────────────────────────────
-function LightRay({ x, delay }: { x: number; delay: number }) {
+function LightRay({ x, delay, isRed }: { x: number; delay: number; isRed?: boolean }) {
   return (
     <motion.div
       className="absolute top-0 pointer-events-none"
       style={{
         left: x, width: 2, height: "70%",
-        background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)",
+        background: isRed 
+          ? "linear-gradient(180deg, rgba(239,68,68,0.15) 0%, transparent 100%)" 
+          : "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 100%)",
         transform: `rotate(${(Math.random() - 0.5) * 20}deg)`,
         transformOrigin: "top center",
       }}
@@ -184,11 +196,11 @@ function LightRay({ x, delay }: { x: number; delay: number }) {
 }
 
 // ─── Pollen/dust particle ─────────────────────────────────────────────────────
-function Pollen({ x, y, delay }: { x: number; y: number; delay: number }) {
+function Pollen({ x, y, delay, isRed }: { x: number; y: number; delay: number; isRed?: boolean }) {
   return (
     <motion.div
       className="absolute rounded-full pointer-events-none"
-      style={{ left: x, top: y, width: 3, height: 3, background: "rgba(255,255,200,0.6)" }}
+      style={{ left: x, top: y, width: 3, height: 3, background: isRed ? "rgba(239,68,68,0.6)" : "rgba(255,255,200,0.6)" }}
       animate={{
         y: [0, -20, -35],
         x: [0, (Math.random() - 0.5) * 30],
@@ -238,10 +250,24 @@ const TREE_LAYOUTS: Record<ForestStage, { cx: number; size: number; delay: numbe
 };
 
 // ─── Living Forest main component ────────────────────────────────────────────
-export function LivingForest({ score }: { score: number }) {
+export function LivingForest({ score, isRed }: { score: number; isRed?: boolean }) {
   const { t } = useTranslation();
-  const stage  = getStage(score);
-  const s      = STAGE_STYLES[stage];
+  // Forced green state by default (stage forest) unless isRed is activated.
+  const stage  = isRed ? getStage(score) : "forest";
+  
+  let s = STAGE_STYLES[stage];
+  if (isRed) {
+    s = {
+      sky: "linear-gradient(180deg, #fee2e2 0%, #fef2f2 60%, #fca5a5 100%)",
+      ground: "linear-gradient(180deg, #ef4444 0%, #dc2626 100%)",
+      groundColor: "#dc2626",
+      treeFill: "#ef4444",
+      trunkColor: "#7f1d1d",
+      glowColor: "rgba(239,68,68,0.25)",
+      textColor: "#991b1b",
+      badgeBg: "rgba(239,68,68,0.12)",
+    };
+  }
   const trees  = TREE_LAYOUTS[stage];
   const prevScore = useRef(score);
   const [showBurst, setShowBurst] = useState(false);
@@ -250,17 +276,24 @@ export function LivingForest({ score }: { score: number }) {
   useEffect(() => {
     if (score - prevScore.current >= 8) setShowBurst(true);
     prevScore.current = score;
-    if (showBurst) { const t = setTimeout(() => setShowBurst(false), 1800); return () => clearTimeout(t); }
   }, [score]);
 
-  const leaves = stage === "growth" || stage === "forest"
-    ? Array.from({ length: stage === "forest" ? 8 : 4 }, (_, i) => ({
-        x: 30 + i * (stage === "forest" ? 56 : 110) + Math.random() * 30,
+  useEffect(() => {
+    if (showBurst) {
+      const timer = setTimeout(() => setShowBurst(false), 1800);
+      return () => clearTimeout(timer);
+    }
+    return () => {};
+  }, [showBurst]);
+
+  const leaves = stage === "growth" || stage === "forest" || isRed
+    ? Array.from({ length: stage === "forest" || isRed ? 8 : 4 }, (_, i) => ({
+        x: 30 + i * (stage === "forest" || isRed ? 56 : 110) + Math.random() * 30,
         delay: i * 0.6 + Math.random() * 1.2,
       }))
     : [];
 
-  const pollens = stage === "forest"
+  const pollens = stage === "forest" || isRed
     ? Array.from({ length: 6 }, (_, i) => ({
         x: 60 + i * 70 + Math.random() * 30,
         y: 20 + Math.random() * 50,
@@ -268,15 +301,15 @@ export function LivingForest({ score }: { score: number }) {
       }))
     : [];
 
-  const rays = stage === "forest"
+  const rays = stage === "forest" || isRed
     ? Array.from({ length: 4 }, (_, i) => ({
         x: 60 + i * 105,
         delay: i * 0.9,
       }))
     : [];
 
-  const stageKey = t(`forest.${stage}`) as string;
-  const tagline  = t(`forest.tagline.${stage}`) as string;
+  const stageKey = isRed ? "Emissions Alert 🚨" : (t(`forest.${stage}`) as string);
+  const tagline  = isRed ? "Your logged activities have increased carbon levels, warming the atmosphere." : (t(`forest.tagline.${stage}`) as string);
 
   return (
     <motion.div
@@ -291,17 +324,17 @@ export function LivingForest({ score }: { score: number }) {
         transition={{ duration: 1.4, ease: "easeInOut" }}
       />
 
-      {/* Light rays (forest only) */}
-      {rays.map((r, i) => <LightRay key={i} x={r.x} delay={r.delay} />)}
+      {/* Light rays */}
+      {rays.map((r, i) => <LightRay key={i} x={r.x} delay={r.delay} isRed={isRed} />)}
 
       {/* Leaf particles */}
       {leaves.map((l, i) => (
-        <Leaf key={i} x={l.x} delay={l.delay} stage={stage} />
+        <Leaf key={i} x={l.x} delay={l.delay} stage={stage} isRed={isRed} />
       ))}
 
       {/* Pollen particles */}
       {pollens.map((p, i) => (
-        <Pollen key={i} x={p.x} y={p.y} delay={p.delay} />
+        <Pollen key={i} x={p.x} y={p.y} delay={p.delay} isRed={isRed} />
       ))}
 
       {/* Tree SVG scene */}
@@ -322,7 +355,7 @@ export function LivingForest({ score }: { score: number }) {
 
         {/* Trees */}
         {trees.map((tr, i) => (
-          <Tree key={i} cx={tr.cx} stage={stage} size={tr.size} delay={tr.delay} />
+          <Tree key={i} cx={tr.cx} stage={stage} size={tr.size} delay={tr.delay} isRed={isRed} />
         ))}
       </svg>
 
@@ -363,7 +396,7 @@ export function LivingForest({ score }: { score: number }) {
 
       {/* Growth burst delight */}
       <AnimatePresence>
-        {showBurst && (
+        {showBurst && !isRed && (
           <motion.div
             className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
             initial={{ opacity: 0, scale: 0.5 }}
@@ -377,7 +410,7 @@ export function LivingForest({ score }: { score: number }) {
       </AnimatePresence>
 
       {/* Carbon degradation overlay — subtle when score is low */}
-      {score < 30 && (
+      {score < 30 && !isRed && (
         <motion.div
           className="absolute inset-0 pointer-events-none"
           animate={{ opacity: Math.max(0, (30 - score) / 30) * 0.25 }}

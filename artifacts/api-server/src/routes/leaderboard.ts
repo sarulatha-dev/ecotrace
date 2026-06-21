@@ -26,6 +26,14 @@ function sessionToDisplayName(sessionId: string): string {
   return `${adj} ${noun} #${String(num).padStart(2, "0")}`;
 }
 
+const MOCK_COMPETITORS = [
+  { displayName: "Solar Fox #05", co2Reduced: 125.4, challengesCompleted: 8, totalCo2Logged: 320.5, topCategory: "energy", isCurrentUser: false },
+  { displayName: "Verdant Owl #12", co2Reduced: 94.2, challengesCompleted: 6, totalCo2Logged: 210.8, topCategory: "food", isCurrentUser: false },
+  { displayName: "Mossy Bear #22", co2Reduced: 78.5, challengesCompleted: 5, totalCo2Logged: 450.2, topCategory: "transport", isCurrentUser: false },
+  { displayName: "Misty Hare #45", co2Reduced: 52.0, challengesCompleted: 4, totalCo2Logged: 180.0, topCategory: "shopping", isCurrentUser: false },
+  { displayName: "Amber Lynx #17", co2Reduced: 38.2, challengesCompleted: 3, totalCo2Logged: 290.4, topCategory: "transport", isCurrentUser: false }
+];
+
 router.get("/leaderboard", async (req, res): Promise<void> => {
   const currentSessionId = req.query.sessionId as string | undefined;
 
@@ -58,21 +66,22 @@ router.get("/leaderboard", async (req, res): Promise<void> => {
   }
 
   for (const activity of activities) {
-    const existing = sessionStats.get(activity.sessionId);
-    if (existing) {
-      existing.totalCo2Logged += activity.co2Amount;
-    }
+    const existing = sessionStats.get(activity.sessionId) ?? {
+      co2Reduced: 0,
+      challengesCompleted: 0,
+      totalCo2Logged: 0,
+      categoryCount: {},
+    };
+    existing.totalCo2Logged += activity.co2Amount;
+    sessionStats.set(activity.sessionId, existing);
   }
 
-  const entries = Array.from(sessionStats.entries())
-    .filter(([, stats]) => stats.challengesCompleted > 0)
-    .sort(([, a], [, b]) => b.co2Reduced - a.co2Reduced)
-    .slice(0, 20)
-    .map(([sessionId, stats], index) => {
+  // Build real entries from DB session stats
+  const realEntries = Array.from(sessionStats.entries())
+    .map(([sessionId, stats]) => {
       const topCategory = Object.entries(stats.categoryCount)
         .sort(([, a], [, b]) => b - a)[0]?.[0] ?? "transport";
       return {
-        rank: index + 1,
         displayName: sessionToDisplayName(sessionId),
         co2Reduced: Math.round(stats.co2Reduced * 10) / 10,
         challengesCompleted: stats.challengesCompleted,
@@ -82,20 +91,39 @@ router.get("/leaderboard", async (req, res): Promise<void> => {
       };
     });
 
-  if (currentSessionId && !entries.some((e) => e.isCurrentUser)) {
-    const userStats = sessionStats.get(currentSessionId);
-    if (!userStats || userStats.challengesCompleted === 0) {
-      entries.push({
-        rank: entries.length + 1,
-        displayName: sessionToDisplayName(currentSessionId),
-        co2Reduced: userStats?.co2Reduced ?? 0,
-        challengesCompleted: userStats?.challengesCompleted ?? 0,
-        totalCo2Logged: Math.round((userStats?.totalCo2Logged ?? 0) * 10) / 10,
-        topCategory: "transport",
-        isCurrentUser: true,
-      });
-    }
+  // Ensure current user is in realEntries even if not in sessionStats
+  if (currentSessionId && !realEntries.some((e) => e.isCurrentUser)) {
+    realEntries.push({
+      displayName: sessionToDisplayName(currentSessionId),
+      co2Reduced: 0,
+      challengesCompleted: 0,
+      totalCo2Logged: 0,
+      topCategory: "transport",
+      isCurrentUser: true,
+    });
   }
+
+  // Combine real entries and mock competitors
+  const allEntries = [
+    ...realEntries,
+    ...MOCK_COMPETITORS.filter(
+      (m) => !realEntries.some((r) => r.displayName === m.displayName)
+    ),
+  ];
+
+  // Sort by co2Reduced descending
+  const sorted = allEntries.sort((a, b) => b.co2Reduced - a.co2Reduced);
+
+  // Assign ranks and slice top 20
+  const entries = sorted.slice(0, 20).map((entry, index) => ({
+    rank: index + 1,
+    displayName: entry.displayName,
+    co2Reduced: entry.co2Reduced,
+    challengesCompleted: entry.challengesCompleted,
+    totalCo2Logged: entry.totalCo2Logged,
+    topCategory: entry.topCategory,
+    isCurrentUser: entry.isCurrentUser,
+  }));
 
   res.json(entries);
 });

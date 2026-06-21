@@ -1,7 +1,7 @@
-import { useRef, useState, useCallback, useMemo } from "react";
+import { useRef, useState, useCallback, useMemo, useEffect, Suspense } from "react";
 import { useLocation } from "wouter";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Stars } from "@react-three/drei";
+import { Stars, useTexture } from "@react-three/drei";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import * as THREE from "three";
@@ -20,7 +20,7 @@ type Dir = keyof typeof DIRS;
 
 const ECO = "#10b981";
 
-// ─── Bullet data per direction ───────────────────────────────────────────────
+// ─── Bullet data per direction ─────────────────────────────────────────────────
 const BULLETS: Record<Dir, { icon: string; text: string }[]> = {
   right: [
     { icon: "🚗", text: "Driving" },
@@ -36,20 +36,20 @@ const BULLETS: Record<Dir, { icon: string; text: string }[]> = {
   up: [
     { icon: "💡", text: "Save Energy" },
     { icon: "♻️", text: "Use Reusable Items" },
-    { icon: "🚫", text: "Reduce Plastic" },
+    { icon: "🚲", text: "Reduce Plastic" },
     { icon: "🌱", text: "Plant More Trees" },
-    { icon: "🚌", text: "Use Public Transport" },
+    { icon: "🚎", text: "Use Public Transport" },
   ],
   down: [
     { icon: "📊", text: "Footprint Tracker" },
-    { icon: "🤖", text: "Smart Recommendations" },
-    { icon: "🎯", text: "Daily Challenges" },
+    { icon: "🧠", text: "Smart Recommendations" },
+    { icon: "🏆", text: "Daily Challenges" },
     { icon: "🌍", text: "Community Impact" },
-    { icon: "🏆", text: "Rewards & Badges" },
+    { icon: "🎖", text: "Rewards & Badges" },
   ],
 };
 
-// ─── WebGL check ─────────────────────────────────────────────────────────────
+// ─── WebGL check ──────────────────────────────────────────────────────────────
 function checkWebGL() {
   try {
     const canvas = document.createElement("canvas");
@@ -103,7 +103,6 @@ function CSSGlobe() {
           <div className="absolute rounded-full bg-emerald-600/32" style={{ width:"24%", height:"19%", top:"44%", left:"53%", filter:"blur(5px)" }} />
           <div className="absolute rounded-full bg-emerald-700/36" style={{ width:"28%", height:"22%", top:"26%", left:"56%", filter:"blur(5px)" }} />
           <div className="absolute rounded-full bg-emerald-600/24" style={{ width:"17%", height:"14%", top:"66%", left:"16%", filter:"blur(3px)" }} />
-          {/* Night side city lights */}
           {[
             { top:"30%", left:"62%", size:3 }, { top:"42%", left:"70%", size:2 },
             { top:"55%", left:"66%", size:2 }, { top:"35%", left:"74%", size:1.5 },
@@ -112,7 +111,6 @@ function CSSGlobe() {
             <div key={i} className="absolute rounded-full bg-yellow-200/60"
               style={{ width:c.size, height:c.size, top:c.top, left:c.left, filter:"blur(0.5px)" }} />
           ))}
-          {/* Cloud streaks */}
           <div className="absolute rounded-full bg-white/12" style={{ width:"40%", height:"8%", top:"15%", left:"30%", filter:"blur(5px)", transform:"rotate(-12deg)" }} />
           <div className="absolute rounded-full bg-white/8"  style={{ width:"25%", height:"6%", top:"55%", left:"40%", filter:"blur(4px)", transform:"rotate(8deg)" }} />
           <div className="absolute left-0 right-0 top-0 bg-white/12" style={{ height:"8%", filter:"blur(5px)", borderRadius:"50%" }} />
@@ -120,7 +118,6 @@ function CSSGlobe() {
         </div>
         <div className="absolute inset-0 rounded-full"
           style={{ background: "radial-gradient(circle at 30% 28%, rgba(255,255,255,0.08) 0%, transparent 42%)" }} />
-        {/* Atmosphere glow */}
         <div className="absolute -inset-3 rounded-full"
           style={{ boxShadow: "0 0 40px rgba(59,130,246,0.35), 0 0 80px rgba(16,185,129,0.18)", borderRadius:"50%" }} />
         <div className="absolute inset-0 rounded-full"
@@ -130,61 +127,168 @@ function CSSGlobe() {
   );
 }
 
-// ─── 3D Globe mesh ────────────────────────────────────────────────────────────
+// ─── GLSL Shaders for realistic Earth ─────────────────────────────────────────
+
+const earthVertexShader = `
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vWorldNormal;
+  void main() {
+    vUv = uv;
+    vNormal = normalize(normalMatrix * normal);
+    vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const earthFragmentShader = `
+  uniform sampler2D uDayTex;
+  uniform sampler2D uNightTex;
+  uniform sampler2D uBumpTex;
+  uniform vec3 uSunDir;
+  uniform float uHasDay;
+  uniform float uHasNight;
+  uniform float uHasBump;
+
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vWorldNormal;
+
+  void main() {
+    vec3 normal = normalize(vWorldNormal);
+
+    // Subtle bump from topology map
+    if (uHasBump > 0.5) {
+      vec3 bumpSample = texture2D(uBumpTex, vUv).rgb;
+      float bumpVal = bumpSample.r * 2.0 - 1.0;
+      normal = normalize(normal + vec3(bumpVal * 0.06));
+    }
+
+    float sunDot = dot(normal, normalize(uSunDir));
+
+    // Smooth day/night terminator — soft twilight zone
+    float dayMix = smoothstep(-0.18, 0.22, sunDot);
+
+    vec4 dayColor;
+    vec4 nightColor;
+
+    if (uHasDay > 0.5) {
+      dayColor = texture2D(uDayTex, vUv);
+      // Boost saturation slightly for vibrancy
+      float lum = dot(dayColor.rgb, vec3(0.299, 0.587, 0.114));
+      dayColor.rgb = mix(vec3(lum), dayColor.rgb, 1.18);
+    } else {
+      // Fallback: ocean blue with grid continents
+      float grid = step(0.965, fract(vUv.x * 36.0)) + step(0.965, fract(vUv.y * 18.0));
+      dayColor = vec4(0.04, 0.18, 0.38, 1.0) + vec4(vec3(grid * 0.1), 0.0);
+    }
+
+    if (uHasNight > 0.5) {
+      nightColor = texture2D(uNightTex, vUv);
+      // Amplify city lights on dark side
+      nightColor.rgb *= 2.6;
+      nightColor.rgb = pow(nightColor.rgb, vec3(0.78));
+    } else {
+      nightColor = vec4(0.01, 0.03, 0.06, 1.0);
+    }
+
+    // Blend day & night
+    vec4 earthColor = mix(nightColor, dayColor, dayMix);
+
+    // Specular highlight (sun glint on oceans)
+    float spec = pow(max(0.0, dot(reflect(-normalize(uSunDir), normal), vec3(0.0, 0.0, 1.0))), 28.0);
+    earthColor.rgb += vec3(spec * 0.22 * dayMix);
+
+    gl_FragColor = vec4(earthColor.rgb, 1.0);
+  }
+`;
+
+// Atmosphere shaders removed
+
+// ─── Realistic Earth Globe (drop-in replacement for GlobeMesh) ────────────────
 function GlobeMesh({ rotRef, isDraggingRef }: {
   rotRef: React.MutableRefObject<{ x: number; y: number }>;
   isDraggingRef: React.MutableRefObject<boolean>;
 }) {
-  const sphereRef = useRef<THREE.Mesh>(null);
-  const wireRef   = useRef<THREE.Mesh>(null);
+  const earthRef  = useRef<THREE.Mesh>(null);
   const cloudRef  = useRef<THREE.Mesh>(null);
 
+  // Load textures using Drei's useTexture hook (instant, cached, Suspense-ready)
+  const [dayTex, nightTex, bumpTex, cloudTex] = useTexture([
+    "/textures/earth-day.jpg",
+    "/textures/earth-night.jpg",
+    "/textures/earth-bump.png",
+    "/textures/earth-clouds.png"
+  ]);
+
+  // Set correct color space for textures
+  useEffect(() => {
+    if (dayTex) dayTex.colorSpace = THREE.SRGBColorSpace;
+    if (nightTex) nightTex.colorSpace = THREE.SRGBColorSpace;
+    if (cloudTex) cloudTex.colorSpace = THREE.SRGBColorSpace;
+  }, [dayTex, nightTex, cloudTex]);
+
+  // Uniforms - memoized, utilizing the preloaded textures
+  const earthUniforms = useMemo(() => ({
+    uDayTex:   { value: dayTex },
+    uNightTex: { value: nightTex },
+    uBumpTex:  { value: bumpTex },
+    uSunDir:   { value: new THREE.Vector3(6, 3, 5).normalize() },
+    uHasDay:   { value: dayTex ? 1.0 : 0.0 },
+    uHasNight: { value: nightTex ? 1.0 : 0.0 },
+    uHasBump:  { value: bumpTex ? 1.0 : 0.0 },
+  }), [dayTex, nightTex, bumpTex]);
+
+
   useFrame((state, delta) => {
-    if (!sphereRef.current) return;
-    if (!isDraggingRef.current) rotRef.current.y += delta * 0.14;
-    sphereRef.current.rotation.y = rotRef.current.y;
-    sphereRef.current.rotation.x = rotRef.current.x;
-    if (wireRef.current) {
-      wireRef.current.rotation.y = rotRef.current.y;
-      wireRef.current.rotation.x = rotRef.current.x;
+    if (!earthRef.current) return;
+
+    // Auto-rotate when not dragging
+    if (!isDraggingRef.current) {
+      rotRef.current.y += delta * 0.10; // Smooth, premium slow spin
     }
+
+    earthRef.current.rotation.y = rotRef.current.y;
+    earthRef.current.rotation.x = rotRef.current.x;
+
     if (cloudRef.current) {
-      cloudRef.current.rotation.y = rotRef.current.y + state.clock.elapsedTime * 0.038;
-      cloudRef.current.rotation.x = rotRef.current.x * 0.88;
+      // Clouds drift slightly faster than Earth surface
+      cloudRef.current.rotation.y = rotRef.current.y + state.clock.elapsedTime * 0.028;
+      cloudRef.current.rotation.x = rotRef.current.x * 0.85;
     }
   });
 
   return (
     <>
-      <mesh ref={sphereRef}>
-        <sphereGeometry args={[2, 64, 64]} />
-        <meshPhongMaterial color="#0a5c6e" emissive="#041e2a" emissiveIntensity={0.6} shininess={100} specular="#20e8c0" />
+      {/* ── Core Earth sphere with custom GLSL day/night shader ─────────── */}
+      <mesh ref={earthRef} rotation={[0, -1.2, 0]}>
+        <sphereGeometry args={[2, 72, 72]} />
+        <shaderMaterial
+          vertexShader={earthVertexShader}
+          fragmentShader={earthFragmentShader}
+          uniforms={earthUniforms}
+        />
       </mesh>
-      <mesh ref={wireRef}>
-        <sphereGeometry args={[2.012, 28, 18]} />
-        <meshBasicMaterial color="#10b981" wireframe transparent opacity={0.11} />
+
+      {/* ── Cloud layer ───────────────────────────────────────────────────── */}
+      <mesh ref={cloudRef} scale={[1.022, 1.022, 1.022]}>
+        <sphereGeometry args={[2, 48, 48]} />
+        <meshStandardMaterial
+          map={cloudTex ?? undefined}
+          alphaMap={cloudTex ?? undefined}
+          transparent
+          opacity={cloudTex ? 0.45 : 0.06}
+          depthWrite={false}
+          color={cloudTex ? "#ffffff" : "#e8f8f5"}
+          blending={THREE.NormalBlending}
+        />
       </mesh>
-      <mesh ref={cloudRef} scale={[1.034, 1.034, 1.034]}>
-        <sphereGeometry args={[2, 32, 32]} />
-        <meshBasicMaterial color="#e8f8f5" transparent opacity={0.07} side={THREE.FrontSide} />
-      </mesh>
-      <mesh scale={[1.08, 1.08, 1.08]}>
-        <sphereGeometry args={[2, 32, 32]} />
-        <meshBasicMaterial color="#34d399" transparent opacity={0.075} side={THREE.BackSide} />
-      </mesh>
-      <mesh scale={[1.19, 1.19, 1.19]}>
-        <sphereGeometry args={[2, 32, 32]} />
-        <meshBasicMaterial color="#10b981" transparent opacity={0.04} side={THREE.BackSide} />
-      </mesh>
-      <mesh scale={[1.36, 1.36, 1.36]}>
-        <sphereGeometry args={[2, 32, 32]} />
-        <meshBasicMaterial color="#1d4ed8" transparent opacity={0.025} side={THREE.BackSide} />
-      </mesh>
+
     </>
   );
 }
 
-// ─── Premium glassmorphism content card ───────────────────────────────────────
+// ─── Premium glassmorphism content card ──────────────────────────────────────
 function ContentCard({ dir, progress }: { dir: Dir; progress: number }) {
   const { t } = useTranslation();
   const d = DIRS[dir];
@@ -240,10 +344,12 @@ function ContentCard({ dir, progress }: { dir: Dir; progress: number }) {
 
             {/* Bullet list */}
             <div className="space-y-1.5 mb-3">
-              {bullets.map((b) => (
+              {bullets.map((b, idx) => (
                 <div key={b.text} className="flex items-center gap-2">
                   <span className="text-[12px] w-4 shrink-0">{b.icon}</span>
-                  <span className="text-[11px] text-white/70 font-medium">{b.text}</span>
+                  <span className="text-[11px] text-white/70 font-medium">
+                    {t(`${d.key}.bullets.${idx}`, b.text)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -257,13 +363,13 @@ function ContentCard({ dir, progress }: { dir: Dir; progress: number }) {
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold text-white w-fit"
                   style={{ background: ECO, boxShadow: "0 4px 18px rgba(16,185,129,0.4)" }}
                 >
-                  Start Your Journey <ChevronRight className="h-3 w-3" />
+                  {t("down.label")} <ChevronRight className="h-3 w-3" />
                 </motion.div>
               </Link>
             ) : (
               <Link href={d.path} className="pointer-events-auto">
                 <span className="text-[11px] font-semibold flex items-center gap-1 hover:gap-2 transition-all" style={{ color: ECO }}>
-                  Explore More <ChevronRight className="h-3 w-3" />
+                  {t("exploreMore")} <ChevronRight className="h-3 w-3" />
                 </span>
               </Link>
             )}
@@ -312,7 +418,7 @@ function DirectionHint({ dir, active, progress }: { dir: Dir; active: boolean; p
   );
 }
 
-// ─── Mini CSS globe for explainer section ────────────────────────────────────
+// ─── Mini CSS globe for explainer section ─────────────────────────────────────
 function MiniGlobe({ size = 96 }: { size?: number }) {
   return (
     <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
@@ -332,7 +438,6 @@ function MiniGlobe({ size = 96 }: { size?: number }) {
         ))}
         <div className="absolute rounded-full bg-emerald-700/45" style={{ width:"32%", height:"24%", top:"25%", left:"20%", filter:"blur(3px)" }} />
         <div className="absolute rounded-full bg-emerald-600/35" style={{ width:"22%", height:"18%", top:"46%", left:"52%", filter:"blur(2px)" }} />
-        {/* City lights */}
         {[{top:"32%",left:"60%"},{top:"44%",left:"68%"},{top:"55%",left:"62%"}].map((c,i) => (
           <div key={i} className="absolute rounded-full bg-yellow-200/70"
             style={{ width:2, height:2, top:c.top, left:c.left }} />
@@ -341,7 +446,6 @@ function MiniGlobe({ size = 96 }: { size?: number }) {
       </div>
       <div className="absolute inset-0 rounded-full"
         style={{ background: "radial-gradient(circle at 28% 26%, rgba(255,255,255,0.09) 0%, transparent 38%)" }} />
-      {/* Blue atmospheric rim */}
       <div className="absolute -inset-1 rounded-full"
         style={{ boxShadow: "0 0 18px rgba(59,130,246,0.4), 0 0 35px rgba(16,185,129,0.15)", borderRadius: "50%", pointerEvents: "none" }} />
     </div>
@@ -380,10 +484,12 @@ function ExplainerCard({ dir }: { dir: Dir }) {
         </div>
         <p className="text-white/50 text-[11px] leading-relaxed mb-3">{t(`${d.key}.desc`)}</p>
         <div className="space-y-1.5">
-          {bullets.map((b) => (
+          {bullets.map((b, idx) => (
             <div key={b.text} className="flex items-center gap-2">
               <span className="text-[11px] shrink-0">{b.icon}</span>
-              <span className="text-[11px] text-white/65 font-medium">{b.text}</span>
+              <span className="text-[11px] text-white/65 font-medium">
+                {t(`${d.key}.bullets.${idx}`, b.text)}
+              </span>
             </div>
           ))}
         </div>
@@ -395,7 +501,7 @@ function ExplainerCard({ dir }: { dir: Dir }) {
               className="mt-4 flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-bold text-white w-fit"
               style={{ background: ECO, boxShadow: "0 3px 14px rgba(16,185,129,0.4)" }}
             >
-              Start Your Journey <ChevronRight className="h-3 w-3" />
+              {t("down.label")} <ChevronRight className="h-3 w-3" />
             </motion.div>
           </Link>
         )}
@@ -493,12 +599,23 @@ export default function Landing() {
         <div className="absolute inset-0">
           {webgl ? (
             <Canvas camera={{ position: [0, 0, 5.5], fov: 44 }} dpr={[1, 1.5]}>
-              <Stars radius={130} depth={65} count={10000} factor={5} saturation={0} fade speed={0.35} />
-              <ambientLight intensity={0.22} />
-              <directionalLight position={[7, 4, 5]} intensity={2.4} color="#fff6e0" />
-              <pointLight position={[-6, 1, -2]} intensity={1.0} color="#34d399" />
-              <pointLight position={[0, -5, 3]} intensity={0.2} color="#1d4ed8" />
-              <GlobeMesh rotRef={rotRef} isDraggingRef={isDraggingRef} />
+              {/* Subtle faint starfield — low brightness, premium feel */}
+              <Stars radius={130} depth={65} count={6000} factor={3.5} saturation={0} fade speed={0.25} />
+              {/* Sunlight from top-right front */}
+              <ambientLight intensity={0.14} />
+              <directionalLight position={[6, 3, 5]} intensity={2.8} color="#fff8e8" />
+              {/* Subtle blue fill from bottom-left */}
+              <pointLight position={[-5, -2, -3]} intensity={0.4} color="#1a5fbd" />
+              {/* Soft green eco fill */}
+              <pointLight position={[-3, 2, 4]} intensity={0.35} color="#1daf76" />
+              <Suspense fallback={
+                <mesh rotation={[0, -1.2, 0]}>
+                  <sphereGeometry args={[2, 48, 48]} />
+                  <meshBasicMaterial color="#041922" wireframe />
+                </mesh>
+              }>
+                <GlobeMesh rotRef={rotRef} isDraggingRef={isDraggingRef} />
+              </Suspense>
             </Canvas>
           ) : (
             <CSSGlobe />
@@ -531,8 +648,8 @@ export default function Landing() {
           {/* Right controls */}
           <div className="flex items-center gap-2.5">
             <span className="hidden md:flex items-center gap-1.5 text-white/40 text-xs">
-              <span className="w-4 h-4 rounded-full border border-white/20 flex items-center justify-center text-[8px]">↺</span>
-              Rotate Earth to Explore
+              <span className="w-4 h-4 rounded-full border border-white/20 flex items-center justify-center text-[8px]">⊙</span>
+              {t("rotateHint")}
             </span>
             <LanguageSwitcher dark />
             <Link href="/dashboard">
@@ -548,7 +665,7 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* ── Left hero text ─────────────────────────────────────────────── */}
+        {/* ── Left hero text ──────────────────────────────────────────────── */}
         <motion.div
           className="absolute left-8 md:left-14 pointer-events-none z-20"
           style={{ top: "50%", transform: "translateY(-44%)" }}
@@ -561,7 +678,7 @@ export default function Landing() {
             transition={{ delay: 0.3, duration: 0.8 }}
             className="text-white/90 text-3xl md:text-5xl font-bold leading-tight"
           >
-            Small Actions
+            {t("center.title")}
           </motion.p>
           <motion.p
             initial={{ opacity: 0, x: -20 }}
@@ -570,7 +687,7 @@ export default function Landing() {
             className="text-4xl md:text-6xl font-black leading-tight mb-4"
             style={{ color: ECO }}
           >
-            Big Impact
+            {t("center.titleAccent")}
           </motion.p>
           <motion.p
             initial={{ opacity: 0, x: -20 }}
@@ -589,7 +706,7 @@ export default function Landing() {
           </div>
         </motion.div>
 
-        {/* ── Direction hints ────────────────────────────────────────────── */}
+        {/* ── Direction hints ─────────────────────────────────────────────── */}
         {(["right","left","up","down"] as Dir[]).map((dir) => (
           <DirectionHint
             key={dir}
@@ -599,10 +716,10 @@ export default function Landing() {
           />
         ))}
 
-        {/* ── Content cards ──────────────────────────────────────────────── */}
+        {/* ── Content cards ───────────────────────────────────────────────── */}
         {activeDir && <ContentCard dir={activeDir} progress={dragProgress} />}
 
-        {/* ── Navigate threshold pill ────────────────────────────────────── */}
+        {/* ── Navigate threshold pill ─────────────────────────────────────── */}
         {isDragging && dragProgress > 0.62 && activeDir && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -621,7 +738,7 @@ export default function Landing() {
           </motion.div>
         )}
 
-        {/* ── Bottom hint bar ────────────────────────────────────────────── */}
+        {/* ── Bottom hint bar ─────────────────────────────────────────────── */}
         <motion.div
           animate={{ opacity: isDragging || dragProgress > 0.08 ? 0 : 1 }}
           transition={{ delay: isDragging ? 0 : 1.5, duration: 0.7 }}
@@ -648,7 +765,7 @@ export default function Landing() {
           </div>
         </motion.div>
 
-        {/* ── Flash transition ────────────────────────────────────────────── */}
+        {/* ── Flash transition ─────────────────────────────────────────────── */}
         <AnimatePresence>
           {flashDir && (
             <motion.div key="flash"
@@ -672,28 +789,27 @@ export default function Landing() {
           {/* Section heading */}
           <div className="text-center mb-12">
             <p className="text-[10px] font-bold tracking-[0.35em] uppercase mb-3" style={{ color: ECO }}>
-              HOW TO EXPLORE
+              {t("howToExplore")}
             </p>
             <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight">
-              Rotate Earth to Discover
+              {t("rotateToDiscover")}
             </h2>
             <h2 className="text-3xl md:text-4xl font-extrabold leading-tight" style={{ color: ECO }}>
-              4 Key Directions
+              {t("fourDirections")}
             </h2>
           </div>
 
           {/* 2×2 grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Labels + cards */}
             {[
-              { dir: "right" as Dir, label: "RIGHT" },
-              { dir: "left"  as Dir, label: "LEFT"  },
-              { dir: "up"    as Dir, label: "UP"    },
-              { dir: "down"  as Dir, label: "DOWN"  },
-            ].map(({ dir, label }) => (
+              { dir: "right" as Dir, key: "right" },
+              { dir: "left"  as Dir, key: "left"  },
+              { dir: "up"    as Dir, key: "up"    },
+              { dir: "down"  as Dir, key: "down"  },
+            ].map(({ dir, key }) => (
               <div key={dir} className="flex flex-col gap-3">
                 <p className="text-[10px] font-bold tracking-[0.28em] uppercase" style={{ color: ECO }}>
-                  {label}
+                  {t(`directions.${key}`)}
                 </p>
                 <ExplainerCard dir={dir} />
               </div>
@@ -713,8 +829,8 @@ export default function Landing() {
               <Leaf className="h-3 w-3 text-emerald-400" />
             </div>
             <p className="text-sm text-white/50">
-              Every Rotation Brings You Closer to a{" "}
-              <span className="text-white font-semibold">Better Planet</span>{" "}
+              {t("footer.text1")}{" "}
+              <span className="text-white font-semibold">{t("footer.text2")}</span>{" "}
               <span className="text-emerald-400">🌿</span>
             </p>
           </div>

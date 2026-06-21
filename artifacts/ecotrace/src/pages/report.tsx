@@ -11,9 +11,11 @@ import {
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Download, Share2, Leaf, TreePine, Plane, Star, BarChart3 } from "lucide-react";
+import { Download, Share2, Leaf, Star, BarChart3, ChevronRight, Award } from "lucide-react";
 import { toPng } from "html-to-image";
-import { CATEGORY_LABELS } from "@/lib/constants";
+import { useTranslation } from "react-i18next";
+import CountUp from "react-countup";
+import { cn } from "@/lib/utils";
 
 const ADJECTIVES = [
   "Solar","Verdant","Leafy","Mossy","Breeze","Tidal","Alpine","Misty",
@@ -35,18 +37,19 @@ function sessionToDisplayName(sessionId: string): string {
   return `${adj} ${noun} #${String(num).padStart(2, "0")}`;
 }
 
-function getGrade(dailyAvg: number, globalAvg: number): { letter: string; label: string; color: string } {
+function getGrade(dailyAvg: number, globalAvg: number): { letter: string; key: string; color: string; bgGradient: string; glowShadow: string } {
   const ratio = dailyAvg / globalAvg;
-  if (ratio <= 0.3) return { letter: "A+", label: "Climate Champion", color: "#1e4a36" };
-  if (ratio <= 0.5) return { letter: "A", label: "Eco Leader", color: "#2d6a4f" };
-  if (ratio <= 0.7) return { letter: "B+", label: "Green Thinker", color: "#40916c" };
-  if (ratio <= 0.9) return { letter: "B", label: "Conscious Citizen", color: "#52b788" };
-  if (ratio <= 1.1) return { letter: "C", label: "Average Footprint", color: "#e07825" };
-  if (ratio <= 1.5) return { letter: "D", label: "Room to Improve", color: "#c75a10" };
-  return { letter: "F", label: "High Impact", color: "#991b1b" };
+  if (ratio <= 0.3) return { letter: "A+", key: "champ", color: "#166534", bgGradient: "linear-gradient(135deg, #15803d 0%, #166534 100%)", glowShadow: "0 0 15px rgba(22,163,74,0.3)" };
+  if (ratio <= 0.5) return { letter: "A", key: "leader", color: "#14532d", bgGradient: "linear-gradient(135deg, #166534 0%, #14532d 100%)", glowShadow: "0 0 15px rgba(21,128,61,0.25)" };
+  if (ratio <= 0.7) return { letter: "B+", key: "thinker", color: "#15803d", bgGradient: "linear-gradient(135deg, #22c55e 0%, #15803d 100%)", glowShadow: "0 0 15px rgba(34,197,94,0.2)" };
+  if (ratio <= 0.9) return { letter: "B", key: "citizen", color: "#22c55e", bgGradient: "linear-gradient(135deg, #4ade80 0%, #22c55e 100%)", glowShadow: "0 0 12px rgba(74,222,128,0.2)" };
+  if (ratio <= 1.1) return { letter: "C", key: "avg", color: "#d97706", bgGradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", glowShadow: "0 0 12px rgba(245,158,11,0.2)" };
+  if (ratio <= 1.5) return { letter: "D", key: "improve", color: "#b45309", bgGradient: "linear-gradient(135deg, #ea580c 0%, #b45309 100%)", glowShadow: "0 0 12px rgba(234,88,12,0.2)" };
+  return { letter: "F", key: "impact", color: "#991b1b", bgGradient: "linear-gradient(135deg, #ef4444 0%, #991b1b 100%)", glowShadow: "0 0 15px rgba(239,68,68,0.25)" };
 }
 
 export default function Report() {
+  const { t } = useTranslation();
   const sessionId = useSessionId();
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -84,14 +87,14 @@ export default function Report() {
     ? summary.byCategory.reduce((a, b) => (a.co2Amount > b.co2Amount ? a : b))
     : null;
 
-  const today = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const today = new Date().toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 
   async function captureCard(): Promise<string> {
     if (!cardRef.current) throw new Error("Card not found");
     return toPng(cardRef.current, {
       cacheBust: true,
       pixelRatio: 2,
-      style: { borderRadius: "16px" },
+      style: { borderRadius: "20px" },
     });
   }
 
@@ -133,210 +136,224 @@ export default function Report() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-2xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Your Eco Report</h1>
-        <p className="text-muted-foreground mt-1">
-          A snapshot of your environmental impact — download and share it.
-        </p>
+    <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-[var(--eco-primary)]/10 dark:bg-[var(--eco-primary)]/20 flex items-center justify-center border border-[var(--eco-primary)]/20 shadow-[0_0_15px_rgba(22,163,74,0.1)]">
+          <Award className="h-5 w-5 text-[var(--eco-primary)] animate-pulse" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground to-emerald-600 dark:to-emerald-400 bg-clip-text text-transparent">
+            {t("reportPage.title")}
+          </h1>
+          <p className="text-muted-foreground text-xs mt-0.5">{t("reportPage.desc")}</p>
+        </div>
       </div>
 
       {isLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-[480px] w-full rounded-2xl" />
-          <div className="flex gap-3">
-            <Skeleton className="h-11 flex-1 rounded-xl" />
-            <Skeleton className="h-11 flex-1 rounded-xl" />
+          <Skeleton className="h-[420px] w-full rounded-2xl bg-muted/40" />
+          <div className="flex gap-4">
+            <Skeleton className="h-10 flex-1 rounded-xl bg-muted/40" />
+            <Skeleton className="h-10 flex-1 rounded-xl bg-muted/40" />
           </div>
         </div>
       ) : (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="space-y-5"
+          transition={{ type: "spring", stiffness: 100, damping: 15 }}
+          className="space-y-6"
         >
-          {/* The shareable card */}
+          {/* Shareable Card - Upgraded style for rich visual export */}
           <div
             ref={cardRef}
             style={{
-              background: "linear-gradient(135deg, #1e4a36 0%, #2d6a4f 50%, #1e3a2f 100%)",
-              borderRadius: "16px",
-              padding: "40px",
+              background: "linear-gradient(135deg, #061c11 0%, #0d2e1f 50%, #030d08 100%)",
+              borderRadius: "20px",
+              padding: "36px 32px",
               fontFamily: "'Plus Jakarta Sans', sans-serif",
               color: "#ffffff",
               position: "relative",
               overflow: "hidden",
-              minHeight: "480px",
+              minHeight: "440px",
               display: "flex",
               flexDirection: "column",
-              gap: "28px",
+              gap: "24px",
+              border: "1px solid rgba(22, 163, 74, 0.22)",
+              boxShadow: "0 20px 40px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.05)",
             }}
           >
-            {/* Decorative background circles */}
+            {/* Background mesh glows */}
             <div style={{
-              position: "absolute", top: -80, right: -80,
-              width: 280, height: 280,
+              position: "absolute", top: -90, right: -90,
+              width: 300, height: 300,
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.04)",
+              background: "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)",
               pointerEvents: "none",
             }} />
             <div style={{
-              position: "absolute", bottom: -60, left: -60,
-              width: 220, height: 220,
+              position: "absolute", bottom: -80, left: -80,
+              width: 260, height: 260,
               borderRadius: "50%",
-              background: "rgba(255,255,255,0.03)",
+              background: "radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)",
               pointerEvents: "none",
             }} />
 
-            {/* Header */}
+            {/* Top row */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: "50%",
-                  background: "rgba(255,255,255,0.15)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "18px",
+                  width: 32, height: 32, borderRadius: "10px",
+                  background: "rgba(16,185,129,0.15)",
+                  border: "1px solid rgba(16,185,129,0.25)",
+                  display: "flex", alignItems: "center", justifyItems: "center", justifyContent: "center",
+                  fontSize: "15px",
                 }}>
                   🌿
                 </div>
-                <span style={{ fontWeight: 700, fontSize: "18px", letterSpacing: "-0.02em" }}>EcoTrace</span>
+                <span style={{ fontWeight: 800, fontSize: "16px", letterSpacing: "-0.03em" }}>EcoTrace</span>
               </div>
-              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)" }}>{today}</span>
+              <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>{today}</span>
             </div>
 
-            {/* Name + grade */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+            {/* Name + Grade */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
               <div>
-                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)", marginBottom: "4px" }}>
-                  Report for
+                <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.45)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "4px" }}>
+                  {t("reportPage.reportFor")}
                 </div>
-                <div style={{ fontSize: "26px", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
+                <div style={{ fontSize: "24px", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1 }}>
                   {displayName}
                 </div>
-                <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginTop: "4px" }}>
-                  Last 30 days
+                <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)", marginTop: "4px", fontWeight: 500 }}>
+                  {t("reportPage.last30days")}
                 </div>
               </div>
+              
               {grade && (
                 <div style={{
                   flexShrink: 0,
-                  background: grade.color,
-                  borderRadius: "12px",
-                  padding: "10px 18px",
+                  background: grade.bgGradient,
+                  borderRadius: "14px",
+                  padding: "10px 16px",
                   textAlign: "center",
                   minWidth: "72px",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  boxShadow: grade.glowShadow,
                 }}>
                   <div style={{ fontSize: "32px", fontWeight: 900, lineHeight: 1, letterSpacing: "-0.04em" }}>
                     {grade.letter}
                   </div>
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.85)", marginTop: "4px", fontWeight: 600 }}>
-                    {grade.label}
+                  <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.9)", marginTop: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    {t("reportPage.grades." + grade.key)}
                   </div>
                 </div>
               )}
             </div>
 
             {/* Divider */}
-            <div style={{ height: "1px", background: "rgba(255,255,255,0.12)" }} />
+            <div style={{ height: "1px", background: "rgba(255,255,255,0.08)" }} />
 
-            {/* Stats grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            {/* Stats Dashboard Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               {[
                 {
                   icon: "📊",
-                  label: "Total CO₂ Logged",
+                  label: t("reportPage.totalLogged"),
                   value: `${summary?.totalCo2.toFixed(1) ?? "0"} kg`,
-                  sub: `${summary?.dailyAverage.toFixed(1) ?? "0"} kg/day avg`,
+                  sub: t("reportPage.dailyAvgVal", { avg: summary?.dailyAverage.toFixed(1) ?? "0" }),
                 },
                 {
                   icon: "🌱",
-                  label: "CO₂ Saved",
+                  label: t("reportPage.co2Saved"),
                   value: `${co2Saved.toFixed(1)} kg`,
-                  sub: `${completions?.length ?? 0} challenges done`,
+                  sub: t("reportPage.challengesDone", { count: completions?.length ?? 0 }),
                 },
                 {
                   icon: "🌳",
-                  label: "Trees Equivalent",
+                  label: t("reportPage.treesEquiv"),
                   value: `${summary?.treeEquivalent.toFixed(1) ?? "0"}`,
-                  sub: "trees absorb this yearly",
+                  sub: t("reportPage.treesEquivSub"),
                 },
                 {
                   icon: "✈️",
-                  label: "Flight Hours",
+                  label: t("reportPage.flightHours"),
                   value: `${summary?.flightHoursEquivalent.toFixed(1) ?? "0"} hrs`,
-                  sub: "of flying equivalent",
+                  sub: t("reportPage.flightHoursSub"),
                 },
               ].map((stat) => (
                 <div key={stat.label} style={{
-                  background: "rgba(255,255,255,0.07)",
+                  background: "rgba(255,255,255,0.03)",
                   borderRadius: "12px",
-                  padding: "16px",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  padding: "14px",
+                  border: "1px solid rgba(255,255,255,0.06)",
                 }}>
-                  <div style={{ fontSize: "20px", marginBottom: "8px" }}>{stat.icon}</div>
-                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <div style={{ fontSize: "16px", marginBottom: "4px" }}>{stat.icon}</div>
+                  <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.45)", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
                     {stat.label}
                   </div>
-                  <div style={{ fontSize: "22px", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
+                  <div style={{ fontSize: "18px", fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1 }}>
                     {stat.value}
                   </div>
-                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.45)", marginTop: "4px" }}>
+                  <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.35)", marginTop: "4px", fontWeight: 500 }}>
                     {stat.sub}
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Top category + vs global */}
+            {/* Bottom details block */}
             {topCategory && (
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                 <div style={{
                   flex: 1,
-                  background: "rgba(224,120,37,0.2)",
-                  border: "1px solid rgba(224,120,37,0.4)",
+                  background: "rgba(249,115,22,0.1)",
+                  border: "1px solid rgba(249,115,22,0.22)",
                   borderRadius: "12px",
-                  padding: "14px",
+                  padding: "12px 14px",
                   display: "flex",
                   alignItems: "center",
                   gap: "12px",
+                  minWidth: "200px",
                 }}>
-                  <span style={{ fontSize: "20px" }}>⚡</span>
+                  <span style={{ fontSize: "18px" }}>⚡</span>
                   <div>
-                    <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      Biggest Source
+                    <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.45)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                      {t("reportPage.biggestSource")}
                     </div>
-                    <div style={{ fontWeight: 700, fontSize: "15px", marginTop: "2px" }}>
-                      {CATEGORY_LABELS[topCategory.category] ?? topCategory.category}
+                    <div style={{ fontWeight: 800, fontSize: "13px", color: "#f97316", marginTop: "2px" }}>
+                      {t(`logActivity.categories.${topCategory.category}`) || topCategory.category}
                     </div>
-                    <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginTop: "1px" }}>
-                      {topCategory.co2Amount.toFixed(1)} kg · {topCategory.percentage.toFixed(0)}% of total
+                    <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.4)", marginTop: "2px", fontWeight: 500 }}>
+                      {t("reportPage.sourceStats", { co2: topCategory.co2Amount.toFixed(1), pct: topCategory.percentage.toFixed(0) })}
                     </div>
                   </div>
                 </div>
                 {summary && (
                   <div style={{
                     flex: 1,
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.06)",
                     borderRadius: "12px",
-                    padding: "14px",
+                    padding: "12px 14px",
                     display: "flex",
                     alignItems: "center",
                     gap: "12px",
+                    minWidth: "200px",
                   }}>
-                    <span style={{ fontSize: "20px" }}>🌍</span>
+                    <span style={{ fontSize: "18px" }}>🌍</span>
                     <div>
-                      <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                        vs. Global Avg
+                      <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.45)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        {t("reportPage.vsGlobal")}
                       </div>
-                      <div style={{ fontWeight: 700, fontSize: "15px", marginTop: "2px" }}>
+                      <div style={{ fontWeight: 800, fontSize: "13px", color: summary.dailyAverage < summary.globalAverage ? "#22c55e" : "#ea580c", marginTop: "2px" }}>
                         {summary.dailyAverage < summary.globalAverage
-                          ? `${((1 - summary.dailyAverage / summary.globalAverage) * 100).toFixed(0)}% below`
-                          : `${((summary.dailyAverage / summary.globalAverage - 1) * 100).toFixed(0)}% above`}
+                          ? t("reportPage.belowGlobal", { pct: ((1 - summary.dailyAverage / summary.globalAverage) * 100).toFixed(0) })
+                          : t("reportPage.aboveGlobal", { pct: ((summary.dailyAverage / summary.globalAverage - 1) * 100).toFixed(0) })}
                       </div>
-                      <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)", marginTop: "1px" }}>
-                        Global avg: {summary.globalAverage} kg/day
+                      <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.4)", marginTop: "2px", fontWeight: 500 }}>
+                        {t("reportPage.globalAvgVal", { avg: summary.globalAverage.toFixed(1) })}
                       </div>
                     </div>
                   </div>
@@ -344,25 +361,26 @@ export default function Report() {
               </div>
             )}
 
-            {/* Footer */}
+            {/* Footer row */}
             <div style={{
               marginTop: "auto",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              borderTop: "1px solid rgba(255,255,255,0.1)",
-              paddingTop: "16px",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              paddingTop: "14px",
             }}>
-              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
-                Generated by EcoTrace · Track your impact
+              <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>
+                {t("reportPage.generatedBy")}
               </span>
               <div style={{ display: "flex", gap: "6px" }}>
                 {["🚗", "🍃", "⚡", "🛍️"].map((emoji) => (
                   <span key={emoji} style={{
-                    fontSize: "14px",
-                    background: "rgba(255,255,255,0.08)",
+                    fontSize: "11px",
+                    background: "rgba(255,255,255,0.05)",
                     borderRadius: "6px",
-                    padding: "3px 6px",
+                    padding: "3px 5px",
+                    border: "1px solid rgba(255,255,255,0.05)"
                   }}>
                     {emoji}
                   </span>
@@ -371,38 +389,45 @@ export default function Report() {
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="flex gap-3">
+          {/* Action buttons with premium style */}
+          <div className="flex gap-4">
             <Button
-              className="flex-1 gap-2 py-6 text-base rounded-xl"
+              className="interactive flex-1 gap-2 rounded-xl font-bold text-xs h-10 bg-[var(--eco-primary)] hover:bg-[var(--eco-best)] text-white shadow-md hover:shadow-[var(--glow-green)] transition-all"
               onClick={handleDownload}
               disabled={downloading}
             >
-              <Download className="h-5 w-5" />
-              {downloading ? "Generating..." : "Download PNG"}
+              <Download className="h-4 w-4" />
+              {downloading ? t("reportPage.generating") : t("reportPage.downloadPng")}
             </Button>
             <Button
               variant="outline"
-              className="flex-1 gap-2 py-6 text-base rounded-xl"
+              className="interactive flex-1 gap-2 rounded-xl font-bold text-xs h-10 border-border/80 text-foreground hover:bg-emerald-500/5 transition-all"
               onClick={handleShare}
               disabled={sharing}
             >
-              <Share2 className="h-5 w-5" />
-              {sharing ? "Sharing..." : "Share"}
+              <Share2 className="h-4 w-4" />
+              {sharing ? t("reportPage.sharing") : t("reportPage.share")}
             </Button>
           </div>
 
-          {/* Summary stats below card */}
-          <div className="grid grid-cols-3 gap-3 pt-2">
+          {/* Summary stats below card - upgraded to matching saas-card style */}
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: <BarChart3 className="h-4 w-4" />, label: "Daily avg", value: `${summary?.dailyAverage.toFixed(1) ?? "—"} kg` },
-              { icon: <Star className="h-4 w-4" />, label: "Challenges", value: completions?.length ?? 0 },
-              { icon: <Leaf className="h-4 w-4" />, label: "CO₂ saved", value: `${co2Saved.toFixed(1)} kg` },
+              { icon: <BarChart3 className="h-4.5 w-4.5 text-sky-500" />, label: t("reportPage.dailyAvg"), value: summary?.dailyAverage.toFixed(1) ?? "—", unit: "kg" },
+              { icon: <Star className="h-4.5 w-4.5 text-amber-500 fill-amber-500/20" />, label: t("reportPage.challenges"), value: completions?.length ?? 0, unit: "done" },
+              { icon: <Leaf className="h-4.5 w-4.5 text-[var(--eco-primary)]" />, label: t("reportPage.co2SavedText"), value: co2Saved.toFixed(1), unit: "kg" },
             ].map((s) => (
-              <div key={s.label} className="bg-card border rounded-xl p-4 text-center">
-                <div className="flex justify-center text-muted-foreground mb-1">{s.icon}</div>
-                <div className="text-lg font-bold">{s.value}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
+              <div key={s.label} className="saas-card relative overflow-hidden p-4 text-center border border-border/80 shadow-[var(--shadow-soft)] flex flex-col justify-between items-center">
+                <div className="h-8 w-8 rounded-lg bg-muted/40 dark:bg-muted/10 border border-border/40 flex items-center justify-center mb-2.5">
+                  {s.icon}
+                </div>
+                <div>
+                  <div className="text-base font-extrabold text-foreground leading-none">
+                    <CountUp end={Number(s.value) || 0} decimals={typeof s.value === "string" ? 1 : 0} duration={1.2} />
+                    <span className="text-[10px] font-medium text-muted-foreground ml-0.5">{s.unit}</span>
+                  </div>
+                  <div className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase mt-1.5 leading-tight">{s.label}</div>
+                </div>
               </div>
             ))}
           </div>

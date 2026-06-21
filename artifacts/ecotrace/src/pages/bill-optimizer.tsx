@@ -1,66 +1,52 @@
 import { useState } from "react";
 import { useSessionId } from "@/hooks/use-session";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import CountUp from "react-countup";
+import { useTranslation } from "react-i18next";
 import {
-  Zap, Droplets, TrendingDown, CheckCircle2, AlertCircle,
-  Clock, Leaf, DollarSign, BarChart2, Wifi
+  Zap, Droplets, TrendingDown, CheckCircle2,
+  Leaf, BarChart2, Wifi, ChevronRight, HelpCircle
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
+const container = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
+const item = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 15 } } };
 
 const BILL_OPTIMIZERS = [
   {
     id: "electricity",
-    label: "Electricity Bill",
+    labelKey: "electricityBill",
     icon: Zap,
     color: "text-yellow-500",
-    bg: "bg-yellow-50 dark:bg-yellow-950/20",
-    border: "border-yellow-200",
-    description: "Connect your Smart Meter to auto-shift usage to off-peak hours and reduce your bill by up to 25%.",
+    bg: "bg-yellow-500/10 dark:bg-yellow-500/20",
+    border: "border-yellow-500/30",
+    activeGlow: "shadow-[0_0_20px_rgba(234,179,8,0.12)]",
     beforeCost: 800,
     afterCost: 600,
-    co2Saving: "0.12t CO₂/year",
-    unit: "₹/month",
-    savings: "₹200/month",
     deviceType: "meter",
-    features: [
-      "Auto-shifts heavy loads (washing machine, EV charger) to 11pm–6am off-peak",
-      "Detects and alerts vampire power drains",
-      "Negotiates Time-of-Use tariff automatically",
-      "Provides real-time consumption dashboard",
-    ],
   },
   {
     id: "water",
-    label: "Water Bill",
+    labelKey: "waterBill",
     icon: Droplets,
     color: "text-cyan-500",
-    bg: "bg-cyan-50 dark:bg-cyan-950/20",
-    border: "border-cyan-200",
-    description: "Connect a Smart Tap controller to auto-reduce flow, detect leaks, and cut water waste by 30%.",
+    bg: "bg-cyan-500/10 dark:bg-cyan-500/20",
+    border: "border-cyan-500/30",
+    activeGlow: "shadow-[0_0_20px_rgba(6,182,212,0.12)]",
     beforeCost: 500,
     afterCost: 350,
-    co2Saving: "0.05t CO₂/year",
-    unit: "₹/month",
-    savings: "₹150/month",
     deviceType: "tap",
-    features: [
-      "Auto-detects and alerts on leaks within 2 minutes",
-      "Reduces flow pressure during non-peak usage",
-      "Tracks daily usage vs. neighbourhood average",
-      "Reminds about seasonal conservation goals",
-    ],
   },
 ];
 
 export default function BillOptimizer() {
+  const { t } = useTranslation();
   const sessionId = useSessionId();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -84,7 +70,7 @@ export default function BillOptimizer() {
         deviceType: optimizer.deviceType,
         deviceBrand: optimizer.id === "electricity" ? "Schneider" : "Kohler",
         deviceId: `${optimizer.deviceType}-${Date.now()}`,
-        deviceName: `Smart ${optimizer.label} Controller`,
+        deviceName: `Smart ${optimizer.id === "electricity" ? "Electricity" : "Water"} Controller`,
       });
       // Then enable optimization
       await axios.post("/api/devices/optimize", { sessionId, deviceId: connectRes.data.device.id });
@@ -107,9 +93,12 @@ export default function BillOptimizer() {
       queryClient.invalidateQueries({ queryKey: ["devices", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["savings", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["wallet", sessionId] });
-      toast({ title: "Auto-Optimizer enabled!", description: "Savings will kick in immediately." });
+      toast({ title: t("billOptimizer.toast.successTitle"), description: t("billOptimizer.toast.successDesc") });
     },
-    onError: () => { setConnecting(null); toast({ title: "Failed", variant: "destructive" }); },
+    onError: () => {
+      setConnecting(null);
+      toast({ title: t("billOptimizer.toast.fail"), variant: "destructive" });
+    },
   });
 
   const totalMonthlySavings = BILL_OPTIMIZERS.reduce((s, o) => {
@@ -117,133 +106,205 @@ export default function BillOptimizer() {
     return s + (isActive ? (o.beforeCost - o.afterCost) : 0);
   }, 0);
 
+  const featureIndexes = [0, 1, 2, 3];
+
   return (
-    <motion.div className="p-6 md:p-8 space-y-8 max-w-3xl mx-auto" variants={container} initial="hidden" animate="show">
-      <div>
-        <motion.h1 variants={item} className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <TrendingDown className="h-7 w-7 text-primary" /> Auto Bill Optimizer
-        </motion.h1>
-        <motion.p variants={item} className="text-muted-foreground mt-1">
-          Your bills automatically reduce themselves — no monthly effort.
-        </motion.p>
+    <motion.div className="saas-container max-w-3xl space-y-6" variants={container} initial="hidden" animate="show">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-[var(--eco-primary)]/10 dark:bg-[var(--eco-primary)]/20 flex items-center justify-center border border-[var(--eco-primary)]/20 shadow-[0_0_15px_rgba(22,163,74,0.1)]">
+            <TrendingDown className="h-5 w-5 text-[var(--eco-primary)]" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground to-emerald-600 dark:to-emerald-400 bg-clip-text text-transparent">
+              {t("billOptimizer.title")}
+            </h1>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              {t("billOptimizer.desc")}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Total savings banner */}
+      {/* Active Monthly Savings Banner */}
       {totalMonthlySavings > 0 && (
         <motion.div variants={item}>
-          <div className="rounded-2xl bg-gradient-to-r from-primary/20 to-emerald-500/10 border border-primary/20 p-5 flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mb-1">Active Monthly Savings</p>
-              <p className="text-3xl font-bold text-primary">₹{totalMonthlySavings}<span className="text-base font-normal text-muted-foreground">/month</span></p>
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Leaf className="h-4 w-4 text-primary" />
-              Zero manual effort required
+          <div className="relative overflow-hidden rounded-2xl border border-[var(--eco-primary)]/20 bg-gradient-to-r from-emerald-500/10 via-[var(--eco-primary)]/5 to-transparent p-5 shadow-md">
+            <div className="absolute right-0 top-0 w-32 h-32 bg-[var(--eco-primary)]/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex items-center justify-between flex-wrap gap-4 relative z-10">
+              <div className="space-y-0.5">
+                <p className="text-[10px] text-[var(--eco-primary)] font-bold uppercase tracking-wider">{t("billOptimizer.activeMonthlySavings")}</p>
+                <div className="text-2xl font-black text-foreground flex items-baseline">
+                  <span className="text-[var(--eco-primary)]">₹</span>
+                  <CountUp end={totalMonthlySavings} duration={1.2} />
+                  <span className="text-xs font-semibold text-muted-foreground ml-1">/ month</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                <Leaf className="h-4 w-4 text-[var(--eco-primary)]" />
+                {t("billOptimizer.zeroEffort")}
+              </div>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Bill optimizer cards */}
-      {BILL_OPTIMIZERS.map((opt) => {
-        const Icon = opt.icon;
-        const isActive = enabled[opt.id] || devices.some((d) => d.deviceType === opt.deviceType && d.optimizationEnabled);
-        const isConnecting = connecting === opt.id;
-        const savingAmount = opt.beforeCost - opt.afterCost;
-        const pct = Math.round((savingAmount / opt.beforeCost) * 100);
+      {/* Bill Optimizer Cards */}
+      <div className="space-y-4">
+        {BILL_OPTIMIZERS.map((opt) => {
+          const Icon = opt.icon;
+          const isActive = enabled[opt.id] || devices.some((d) => d.deviceType === opt.deviceType && d.optimizationEnabled);
+          const isConnecting = connecting === opt.id;
+          const savingAmount = opt.beforeCost - opt.afterCost;
+          const pct = Math.round((savingAmount / opt.beforeCost) * 100);
 
-        return (
-          <motion.div key={opt.id} variants={item}>
-            <Card className={`shadow-sm border-2 ${isActive ? opt.border : "border-border"} transition-colors`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${opt.bg}`}>
-                      <Icon className={`h-5 w-5 ${opt.color}`} />
+          return (
+            <motion.div key={opt.id} variants={item}>
+              <Card className={cn(
+                "saas-card relative overflow-hidden p-5 border transition-all duration-300",
+                isActive ? `${opt.border} bg-[var(--bg-glass)] ${opt.activeGlow}` : "border-border/80"
+              )}>
+                {/* Background decorative glow for active items */}
+                {isActive && (
+                  <div className="absolute -right-24 -top-24 w-48 h-48 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+                )}
+
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4 relative z-10">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className={cn(
+                      "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border relative",
+                      isActive ? "bg-emerald-500/10 border-emerald-500/25" : opt.bg
+                    )}>
+                      {isActive && (
+                        <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                      )}
+                      <Icon className={cn("h-5 w-5", isActive ? "text-[var(--eco-primary)]" : opt.color)} />
                     </div>
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        {opt.label}
+
+                    <div className="min-w-0 space-y-0.5">
+                      <h3 className="font-bold text-base flex items-center gap-2 flex-wrap">
+                        {t(`billOptimizer.${opt.labelKey}`)}
                         {isActive && (
-                          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
-                            <CheckCircle2 className="h-3 w-3 mr-1" /> Active
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 text-[9px] font-bold px-2 py-0 rounded-full">
+                            <CheckCircle2 className="h-3 w-3 mr-1 inline-block" /> {t("billOptimizer.active")}
                           </Badge>
                         )}
-                      </CardTitle>
-                      <CardDescription className="text-xs mt-0.5">{opt.co2Saving} passive carbon reduction</CardDescription>
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground font-medium">
+                        {t(`billOptimizer.optimizers.${opt.id}.saving`)} {t("billOptimizer.passiveCarbonReduction")}
+                      </p>
                     </div>
                   </div>
+
                   {!isActive && (
                     <Button
                       size="sm"
+                      className="interactive h-8 text-[11px] font-bold px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-[var(--eco-primary)] hover:from-emerald-600 hover:to-[var(--eco-best)] text-white shadow-sm shrink-0"
                       disabled={isConnecting}
                       onClick={() => { setConnecting(opt.id); enableMutation.mutate(opt); }}
                     >
-                      {isConnecting ? <><Wifi className="h-3.5 w-3.5 mr-1 animate-pulse" />Connecting…</> : "Enable Auto-Optimizer"}
+                      {isConnecting ? (
+                        <>
+                          <Wifi className="h-3 w-3 mr-1.5 animate-pulse" />
+                          {t("billOptimizer.connecting")}
+                        </>
+                      ) : (
+                        t("billOptimizer.enableAutoOpt")
+                      )}
                     </Button>
                   )}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">{opt.description}</p>
 
-                {/* Before / After */}
-                <div className="flex items-center gap-4 p-3 rounded-xl bg-secondary/50">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Your current bill</p>
-                    <p className="text-xl font-bold line-through text-red-500">₹{opt.beforeCost}</p>
-                    <p className="text-xs text-muted-foreground">{opt.unit}</p>
+                <div className="space-y-4 relative z-10">
+                  <p className="text-xs text-muted-foreground leading-relaxed pl-1 font-medium">
+                    {t(`billOptimizer.optimizers.${opt.id}.description`)}
+                  </p>
+
+                  {/* Before / After Dashboard Layout */}
+                  <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-muted/40 dark:bg-muted/5 border border-border/40 backdrop-blur-sm items-center">
+                    <div className="text-center">
+                      <p className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase">{t("billOptimizer.currentBill")}</p>
+                      <p className="text-base font-extrabold line-through text-red-500/90 leading-tight">₹{opt.beforeCost}</p>
+                      <p className="text-[9px] text-muted-foreground leading-none mt-0.5">{t(`billOptimizer.optimizers.${opt.id}.unit`)}</p>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center shrink-0">
+                      <TrendingDown className="h-5 w-5 text-[var(--eco-primary)] animate-bounce" style={{ animationDuration: "2s" }} />
+                      <span className="text-[9px] font-bold text-[var(--eco-primary)] uppercase tracking-wider mt-0.5">-{pct}%</span>
+                    </div>
+
+                    <div className="text-center">
+                      <p className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase">{t("billOptimizer.afterOpt")}</p>
+                      <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">₹{opt.afterCost}</p>
+                      <p className="text-[9px] text-muted-foreground leading-none mt-0.5">{t(`billOptimizer.optimizers.${opt.id}.unit`)}</p>
+                    </div>
                   </div>
-                  <TrendingDown className="h-6 w-6 text-primary mx-2 shrink-0" />
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">After optimizer</p>
-                    <p className="text-xl font-bold text-emerald-600">₹{opt.afterCost}</p>
-                    <p className="text-xs text-muted-foreground">{opt.unit}</p>
+
+                  {/* Before/After Progress bar */}
+                  <div className="space-y-1.5 px-1">
+                    <div className="flex justify-between items-center text-[10px] text-muted-foreground font-semibold">
+                      <span>Standard Cost</span>
+                      <span className="text-[var(--eco-primary)]">Eco-Optimized (-₹{savingAmount})</span>
+                    </div>
+                    <div className="h-2 w-full bg-muted dark:bg-muted/10 rounded-full overflow-hidden flex">
+                      <div className="h-full bg-red-500/30 dark:bg-red-500/15" style={{ width: `${100 - pct}%` }} />
+                      <div className="h-full bg-gradient-to-r from-emerald-500 to-[var(--eco-primary)]" style={{ width: `${pct}%` }} />
+                    </div>
                   </div>
-                  <div className="ml-auto text-right">
-                    <p className="text-2xl font-bold text-primary">-{pct}%</p>
-                    <p className="text-xs text-muted-foreground">You save {opt.savings}</p>
+
+                  {/* Features Checklist */}
+                  <div className="border-t border-border/40 pt-3">
+                    <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5 pl-1">
+                      {featureIndexes.map((idx) => {
+                        const featureText = t(`billOptimizer.optimizers.${opt.id}.features.${idx}`);
+                        if (!featureText) return null;
+                        return (
+                          <li key={idx} className="flex items-start gap-2 text-[11px] text-muted-foreground leading-snug">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-[var(--eco-primary)] mt-0.5 shrink-0" />
+                            <span className="font-medium">{featureText}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
                 </div>
+              </Card>
+            </motion.div>
+          );
+        })}
+      </div>
 
-                {/* Features */}
-                <ul className="space-y-1.5">
-                  {opt.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </motion.div>
-        );
-      })}
-
-      {/* How it works */}
+      {/* How it Works Flowchart */}
       <motion.div variants={item}>
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-base">How Auto-Optimization Works</CardTitle>
-          </CardHeader>
-          <CardContent className="grid sm:grid-cols-3 gap-4 text-center">
+        <Card className="saas-card p-5 border border-border/80 shadow-[var(--shadow-soft)]">
+          <h3 className="font-bold text-sm tracking-wide uppercase text-muted-foreground mb-4 pl-1">{t("billOptimizer.howItWorks")}</h3>
+          <div className="relative grid sm:grid-cols-3 gap-6 text-center">
+            {/* Dashed connector line for desktop */}
+            <div className="hidden sm:block absolute top-7 left-[16%] right-[16%] h-0.5 border-t border-dashed border-border/60 z-0 pointer-events-none" />
+
             {[
-              { step: "1", icon: Wifi, label: "Connect", desc: "1-tap pairing with your smart meter or device" },
-              { step: "2", icon: BarChart2, label: "AI Learns", desc: "Analyses 14 days of usage patterns" },
-              { step: "3", icon: TrendingDown, label: "Auto-saves", desc: "Continuously optimizes without interruption" },
+              { step: "1", icon: Wifi, labelKey: "billOptimizer.steps.1.label", descKey: "billOptimizer.steps.1.desc" },
+              { step: "2", icon: BarChart2, labelKey: "billOptimizer.steps.2.label", descKey: "billOptimizer.steps.2.desc" },
+              { step: "3", icon: TrendingDown, labelKey: "billOptimizer.steps.3.label", descKey: "billOptimizer.steps.3.desc" },
             ].map((s) => {
               const SIcon = s.icon;
               return (
-                <div key={s.step} className="space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto font-bold text-lg">{s.step}</div>
-                  <SIcon className="h-5 w-5 text-primary mx-auto" />
-                  <p className="font-medium text-sm">{s.label}</p>
-                  <p className="text-xs text-muted-foreground">{s.desc}</p>
+                <div key={s.step} className="space-y-2 relative z-10 group">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[var(--eco-primary)] flex items-center justify-center mx-auto font-black text-sm shadow-sm group-hover:scale-105 transition-transform duration-300">
+                    {s.step}
+                  </div>
+                  <SIcon className="h-4 w-4 text-[var(--eco-primary)] mx-auto animate-pulse" />
+                  <p className="font-bold text-xs text-foreground">{t(s.labelKey)}</p>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed max-w-[180px] mx-auto font-medium">{t(s.descKey)}</p>
                 </div>
               );
             })}
-          </CardContent>
+          </div>
         </Card>
       </motion.div>
     </motion.div>

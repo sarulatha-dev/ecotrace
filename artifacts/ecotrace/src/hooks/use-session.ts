@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 
+let inMemorySessionId: string | null = null;
+
 export function useSessionId() {
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(inMemorySessionId);
 
   useEffect(() => {
-    let id = localStorage.getItem("ecotrace_session_id");
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem("ecotrace_session_id", id);
+    if (!inMemorySessionId) {
+      inMemorySessionId = crypto.randomUUID();
     }
-    setSessionId(id);
+    setSessionId(inMemorySessionId);
   }, []);
 
   return sessionId;
 }
+

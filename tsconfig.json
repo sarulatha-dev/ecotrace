@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "lib/db" },
+    { "path": "lib/api-zod" },
+    { "path": "lib/integrations-openai-ai-server" },
+    { "path": "lib/api-client-react" },
+    { "path": "lib/integrations-openai-ai-react" },
+    { "path": "artifacts/api-server" },
+    { "path": "artifacts/ecotrace" }
+  ]
+}

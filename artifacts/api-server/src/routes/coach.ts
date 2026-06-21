@@ -91,6 +91,195 @@ ${pendingChallenges.map((c) => `- ${c.title} [${c.difficulty}] (saves ${c.co2Red
 
 Please give me personalized coaching advice.`;
 
+function getFallbackAdvice(totalCo2: number, dailyAvg: number, activities: any[]) {
+  // Find highest category
+  const byCategory: Record<string, number> = {};
+  for (const a of activities) {
+    byCategory[a.category] = (byCategory[a.category] ?? 0) + a.co2Amount;
+  }
+  const sortedCategories = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
+  const topCategory = sortedCategories[0]?.[0];
+
+  if (activities.length === 0) {
+    return {
+      message: "Welcome to EcoTrace! I am your AI Eco-Coach. It looks like you haven't logged any activities yet. Log your first travel, meal, or energy activity, and I will analyze it to provide personalized tips to reduce your carbon footprint!",
+      focusArea: "Logging your first carbon-emitting activity",
+      weeklyGoal: "Log at least 3 daily activities this week to establish your carbon baseline.",
+      tips: [
+        {
+          category: "transport",
+          tip: "Consider walking or cycling for short trips under 2 km instead of driving.",
+          impact: "Save ~15 kg CO₂/month",
+          effort: "low"
+        },
+        {
+          category: "food",
+          tip: "Try incorporating one plant-based or vegetarian day into your week.",
+          impact: "Save ~20 kg CO₂/month",
+          effort: "medium"
+        },
+        {
+          category: "energy",
+          tip: "Unplug chargers and electronics when not in use to reduce standby power consumption.",
+          impact: "Save ~8 kg CO₂/month",
+          effort: "low"
+        }
+      ]
+    };
+  }
+
+  if (topCategory === "transport") {
+    return {
+      message: `I've analyzed your carbon footprint, and transport is currently your largest emission source (${byCategory.transport?.toFixed(1)} kg CO₂). By making minor changes in how you commute, you can make a huge impact on your total footprint!`,
+      focusArea: "Optimizing your daily commute and travel habits",
+      weeklyGoal: "Try to replace at least one car trip with public transit or walking this week.",
+      tips: [
+        {
+          category: "transport",
+          tip: "Combine multiple short car trips into one efficient route to reduce driving distance.",
+          impact: "Save ~18 kg CO₂/month",
+          effort: "low"
+        },
+        {
+          category: "transport",
+          tip: "Use public transport like buses or trains for your long-distance commute twice a week.",
+          impact: "Save ~45 kg CO₂/month",
+          effort: "medium"
+        },
+        {
+          category: "energy",
+          tip: "Adjust your home thermostat by 1-2 degrees to save energy while you are away.",
+          impact: "Save ~12 kg CO₂/month",
+          effort: "low"
+        }
+      ]
+    };
+  }
+
+  if (topCategory === "food") {
+    return {
+      message: `Based on your recent logging, food choices represent your largest source of emissions (${byCategory.food?.toFixed(1)} kg CO₂). Adjusting your diet slightly is one of the fastest ways to lower your footprint.`,
+      focusArea: "Shifting towards plant-based meals",
+      weeklyGoal: "Cook three completely vegetarian or vegan meals this week.",
+      tips: [
+        {
+          category: "food",
+          tip: "Replace one beef meal with chicken or turkey, which have a significantly lower carbon footprint.",
+          impact: "Save ~25 kg CO₂/month",
+          effort: "low"
+        },
+        {
+          category: "food",
+          tip: "Opt for locally-sourced, seasonal produce to reduce emissions from long-distance food transport.",
+          impact: "Save ~10 kg CO₂/month",
+          effort: "medium"
+        },
+        {
+          category: "shopping",
+          tip: "Bring reusable bags to the grocery store to eliminate plastic waste.",
+          impact: "Save ~2.0 kg CO₂/month",
+          effort: "low"
+        }
+      ]
+    };
+  }
+
+  if (topCategory === "energy") {
+    return {
+      message: `Your home energy usage seems to be the primary driver of your carbon emissions (${byCategory.energy?.toFixed(1)} kg CO₂). Simple home efficiency improvements can lead to major carbon and financial savings.`,
+      focusArea: "Improving household energy efficiency",
+      weeklyGoal: "Audit your home electronics and switch off power strips at night.",
+      tips: [
+        {
+          category: "energy",
+          tip: "Switch out traditional incandescent light bulbs for energy-efficient LEDs.",
+          impact: "Save ~15 kg CO₂/month",
+          effort: "low"
+        },
+        {
+          category: "energy",
+          tip: "Lower your water heater temperature to 120°F (49°C) to reduce continuous heating energy.",
+          impact: "Save ~18 kg CO₂/month",
+          effort: "low"
+        },
+        {
+          category: "transport",
+          tip: "Walk or ride a bike for quick errands nearby instead of using your car.",
+          impact: "Save ~10 kg CO₂/month",
+          effort: "low"
+        }
+      ]
+    };
+  }
+
+  if (topCategory === "shopping") {
+    return {
+      message: `Your shopping and goods consumption is currently contributing most to your carbon output (${byCategory.shopping?.toFixed(1)} kg CO₂). Practicing conscious purchasing is key to reducing this footprint.`,
+      focusArea: "Embracing a minimalist and circular consumption habit",
+      weeklyGoal: "Commit to a 'no-buy' week for non-essential items.",
+      tips: [
+        {
+          category: "shopping",
+          tip: "Consider buying high-quality secondhand clothes or electronics instead of brand new ones.",
+          impact: "Save ~30 kg CO₂/month",
+          effort: "medium"
+        },
+        {
+          category: "shopping",
+          tip: "Repair broken or damaged household items instead of immediately replacing them.",
+          impact: "Save ~15 kg CO₂/month",
+          effort: "medium"
+        },
+        {
+          category: "food",
+          tip: "Reduce food waste by planning your weekly meals and buying only necessary ingredients.",
+          impact: "Save ~12 kg CO₂/month",
+          effort: "low"
+        }
+      ]
+    };
+  }
+
+  return {
+    message: "Great job tracking your eco-activities! Your daily average looks promising. Let's work together on targeted improvements to shrink your carbon footprint even further.",
+    focusArea: "Diversifying your daily eco-friendly activities",
+    weeklyGoal: "Establish a habit of logging at least one positive eco-action every single day.",
+    tips: [
+      {
+        category: "transport",
+        tip: "Ensure your car tires are properly inflated to optimize fuel efficiency.",
+        impact: "Save ~8 kg CO₂/month",
+        effort: "low"
+      },
+      {
+        category: "food",
+        tip: "Incorporate more plant-based snacks and meals into your weekly diet.",
+        impact: "Save ~15 kg CO₂/month",
+        effort: "low"
+      },
+      {
+        category: "energy",
+        tip: "Wash your laundry in cold water instead of hot to save heating energy.",
+        impact: "Save ~10 kg CO₂/month",
+        effort: "low"
+      }
+    ]
+  };
+}
+
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const xaiKey = process.env.XAI_API_KEY;
+  const openaiKey =
+    process.env.AI_INTEGRATIONS_OPENAI_API_KEY ??
+    process.env.OPENAI_API_KEY;
+  const hasApiKey = !!(openrouterKey || xaiKey || openaiKey);
+
+  if (!hasApiKey) {
+    const fallback = getFallbackAdvice(totalCo2, dailyAvg, activities);
+    res.json(fallback);
+    return;
+  }
+
   try {
     const completion = await openai.chat.completions.create({
       model: process.env.OPENROUTER_API_KEY ? "meta-llama/llama-3.1-8b-instruct" : process.env.XAI_API_KEY ? "grok-3-mini" : "gpt-4o-mini",
@@ -107,20 +296,16 @@ Please give me personalized coaching advice.`;
       advice = JSON.parse(raw);
     } catch {
       req.log.error({ raw }, "Failed to parse coach response as JSON");
-      res.status(500).json({ error: "Invalid AI response format" });
+      const fallback = getFallbackAdvice(totalCo2, dailyAvg, activities);
+      res.json(fallback);
       return;
     }
 
     res.json(advice);
   } catch (err: unknown) {
-    req.log.error({ err }, "OpenAI coach request failed");
-    const code = (err as { code?: string })?.code;
-    const status = (err as { status?: number })?.status;
-    if (code === "insufficient_quota" || status === 429) {
-      res.status(402).json({ error: "OpenAI quota exceeded — please add billing credits at platform.openai.com to use the AI Coach." });
-    } else {
-      res.status(500).json({ error: "Coach unavailable, please try again" });
-    }
+    req.log.error({ err }, "OpenAI coach request failed, using local fallback");
+    const fallback = getFallbackAdvice(totalCo2, dailyAvg, activities);
+    res.json(fallback);
   }
 });
 

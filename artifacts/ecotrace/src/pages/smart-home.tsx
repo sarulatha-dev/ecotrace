@@ -1,37 +1,40 @@
 import { useState } from "react";
 import { useSessionId } from "@/hooks/use-session";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import CountUp from "react-countup";
 import {
   Home, Wifi, Zap, Thermometer, Lightbulb, Plug, Droplets,
   CheckCircle2, Sparkles, TrendingDown, Coins, ShieldCheck,
-  BarChart3, AlertCircle, Plus, Crown
+  BarChart3, Plus, Crown, ChevronRight, HelpCircle
 } from "lucide-react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 
 const DEMO_DEVICE_TEMPLATES = [
-  { deviceType: "AC", deviceBrand: "Daikin", deviceId: "AC001", deviceName: "Living Room AC", icon: Thermometer, color: "text-blue-500", saving: "0.15t CO₂/yr", action: "Auto-reduces 2°C when you leave" },
-  { deviceType: "light", deviceBrand: "Philips Hue", deviceId: "LT001", deviceName: "Smart Lights", icon: Lightbulb, color: "text-yellow-500", saving: "0.05t CO₂/yr", action: "Auto-turns off when room is empty" },
+  { deviceType: "AC", deviceBrand: "Daikin", deviceId: "AC001", deviceName: "Living Room AC", icon: Thermometer, color: "text-sky-500", saving: "0.15t CO₂/yr", action: "Auto-reduces 2°C when you leave" },
+  { deviceType: "light", deviceBrand: "Philips Hue", deviceId: "LT001", deviceName: "Smart Lights", icon: Lightbulb, color: "text-amber-500", saving: "0.05t CO₂/yr", action: "Auto-turns off when room is empty" },
   { deviceType: "plug", deviceBrand: "Tuya", deviceId: "PL001", deviceName: "Smart Plugs", icon: Plug, color: "text-purple-500", saving: "0.08t CO₂/yr", action: "Auto-cuts power to idle devices" },
   { deviceType: "tap", deviceBrand: "Kohler", deviceId: "TP001", deviceName: "Smart Tap", icon: Droplets, color: "text-cyan-500", saving: "0.04t CO₂/yr", action: "Auto-reduces flow, detects leaks" },
 ];
 
-const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
+const container = { hidden: {}, show: { transition: { staggerChildren: 0.05 } } };
+const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 15 } } };
 
 export default function SmartHome() {
+  const { t } = useTranslation();
   const sessionId = useSessionId();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [optimizingId, setOptimizingId] = useState<number | null>(null);
 
-  const { data: devices = [], isLoading: loadingDevices } = useQuery({
+  const { data: devices = [] } = useQuery({
     queryKey: ["devices", sessionId],
     queryFn: async () => {
       const r = await axios.get(`/api/devices?sessionId=${sessionId}`);
@@ -68,10 +71,10 @@ export default function SmartHome() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["devices", sessionId] });
-      toast({ title: "Device connected!", description: "1-tap done. Enable optimization to start saving." });
+      toast({ title: t("smartHome.toast.connectedTitle"), description: t("smartHome.toast.connectedDesc") });
       setConnectingId(null);
     },
-    onError: () => { setConnectingId(null); toast({ title: "Connection failed", variant: "destructive" }); },
+    onError: () => { setConnectingId(null); toast({ title: t("smartHome.toast.connectFailed"), variant: "destructive" }); },
   });
 
   const optimizeMutation = useMutation({
@@ -83,10 +86,10 @@ export default function SmartHome() {
       queryClient.invalidateQueries({ queryKey: ["devices", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["savings", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["wallet", sessionId] });
-      toast({ title: `+${data.coinsEarned} Eco Coins earned!`, description: "Auto-optimization is now active." });
+      toast({ title: t("smartHome.toast.optSuccessTitle", { coins: data.coinsEarned }), description: t("smartHome.toast.optSuccessDesc") });
       setOptimizingId(null);
     },
-    onError: () => { setOptimizingId(null); toast({ title: "Failed", variant: "destructive" }); },
+    onError: () => { setOptimizingId(null); toast({ title: t("smartHome.toast.optFailed"), variant: "destructive" }); },
   });
 
   const subscribeMutation = useMutation({
@@ -97,9 +100,9 @@ export default function SmartHome() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subscription", sessionId] });
       queryClient.invalidateQueries({ queryKey: ["devices", sessionId] });
-      toast({ title: "🎉 Subscribed to Eco Home Bundle!", description: "All devices now auto-optimizing." });
+      toast({ title: t("smartHome.toast.subSuccessTitle"), description: t("smartHome.toast.subSuccessDesc") });
     },
-    onError: () => toast({ title: "Subscription failed", variant: "destructive" }),
+    onError: () => toast({ title: t("smartHome.toast.subFailed"), variant: "destructive" }),
   });
 
   const connectedTemplates = DEMO_DEVICE_TEMPLATES.filter(
@@ -112,212 +115,310 @@ export default function SmartHome() {
   }, 0);
 
   return (
-    <motion.div className="p-6 md:p-8 space-y-8 max-w-4xl mx-auto" variants={container} initial="hidden" animate="show">
-      <div>
-        <motion.h1 variants={item} className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Home className="h-7 w-7 text-primary" /> Your Auto-Eco Home
-        </motion.h1>
-        <motion.p variants={item} className="text-muted-foreground mt-1">
-          Your home optimizes itself — zero effort required.
-        </motion.p>
+    <motion.div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto" variants={container} initial="hidden" animate="show">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-[var(--eco-primary)]/10 dark:bg-[var(--eco-primary)]/20 flex items-center justify-center border border-[var(--eco-primary)]/20 shadow-[0_0_15px_rgba(22,163,74,0.1)]">
+            <Home className="h-5 w-5 text-[var(--eco-primary)]" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-foreground via-foreground to-emerald-600 dark:to-emerald-400 bg-clip-text text-transparent">
+              {t("smartHome.title")}
+            </h1>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              {t("smartHome.desc")}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Passive Savings Banner */}
+      {/* Passive Savings Banner - Premium eco mesh gradient card */}
       {(savings?.co2Kg ?? 0) > 0 && (
-        <motion.div variants={item}>
-          <div className="rounded-2xl bg-gradient-to-r from-primary/20 to-emerald-500/10 border border-primary/20 p-5 flex flex-col md:flex-row gap-4 md:items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mb-1">Total Passive Savings</p>
-              <p className="text-2xl font-bold text-primary">{savings?.co2Kg.toFixed(2)} kg CO₂ saved</p>
-              <p className="text-sm text-muted-foreground mt-0.5">You did NOTHING 😎 — your home did it automatically</p>
-            </div>
-            <div className="flex gap-6 shrink-0">
-              <div className="text-center">
-                <p className="text-xl font-bold">₹{savings?.money.toFixed(0)}</p>
-                <p className="text-xs text-muted-foreground">Money saved</p>
+        <motion.div variants={item} className="relative overflow-hidden rounded-2xl border border-[var(--eco-primary)]/20 bg-gradient-to-r from-emerald-500/10 via-[var(--eco-primary)]/5 to-transparent p-6 shadow-md">
+          {/* Neon mesh glows */}
+          <div className="absolute right-0 top-0 w-36 h-36 bg-[var(--eco-primary)]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute left-1/3 bottom-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between relative z-10">
+            <div className="space-y-1">
+              <p className="text-[10px] text-[var(--eco-primary)] font-bold uppercase tracking-widest">{t("smartHome.totalPassiveSavings")}</p>
+              <div className="text-2xl font-extrabold tracking-tight text-foreground flex items-baseline gap-1.5">
+                <span className="text-[var(--eco-primary)]">
+                  <CountUp end={savings?.co2Kg ?? 0} decimals={2} duration={1.5} />
+                </span>
+                <span className="text-sm font-semibold text-muted-foreground">kg CO₂ saved</span>
               </div>
-              <div className="text-center">
-                <p className="text-xl font-bold">{savings?.energyKwh.toFixed(1)}</p>
-                <p className="text-xs text-muted-foreground">kWh saved</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("smartHome.didNothing")}</p>
+            </div>
+
+            <div className="flex gap-8 border-t border-border/40 md:border-t-0 pt-4 md:pt-0 shrink-0">
+              <div className="space-y-0.5">
+                <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider block">{t("smartHome.moneySaved")}</span>
+                <div className="text-xl font-bold flex items-baseline">
+                  <span className="text-foreground">₹</span>
+                  <CountUp end={savings?.money ?? 0} decimals={0} duration={1.2} />
+                </div>
+              </div>
+              <div className="space-y-0.5">
+                <span className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider block">{t("smartHome.kwhSaved")}</span>
+                <div className="text-xl font-bold flex items-baseline">
+                  <CountUp end={savings?.energyKwh ?? 0} decimals={1} duration={1.2} />
+                  <span className="text-xs font-semibold text-muted-foreground ml-1">kWh</span>
+                </div>
               </div>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Connected Devices */}
+      {/* Connected Devices Grid */}
       {devices.length > 0 && (
         <motion.div variants={item} className="space-y-3">
-          <h2 className="font-semibold text-lg">Connected Devices</h2>
+          <h2 className="font-bold text-sm tracking-wide uppercase text-muted-foreground pl-1">{t("smartHome.connectedDevices")}</h2>
           <div className="grid gap-3">
             {devices.map((device) => {
               const tpl = DEMO_DEVICE_TEMPLATES.find((t) => t.deviceType === device.deviceType);
               const Icon = tpl?.icon ?? Plug;
+              const name = t(`smartHome.templates.${device.deviceType}.name`) || device.deviceName;
+              const action = t(`smartHome.templates.${device.deviceType}.action`) || tpl?.action;
+              const saving = t(`smartHome.templates.${device.deviceType}.saving`) || tpl?.saving;
+
               return (
-                <Card key={device.id} className="shadow-sm">
-                  <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-secondary shrink-0`}>
-                      <Icon className={`h-5 w-5 ${tpl?.color ?? "text-primary"}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold">{device.deviceName}</p>
-                        <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300 bg-emerald-50">
-                          <CheckCircle2 className="h-3 w-3 mr-1" /> Connected
-                        </Badge>
+                <div key={device.id} className="saas-card relative p-4 overflow-hidden border border-border/80 shadow-[var(--shadow-soft)]">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      {/* Device Icon with dynamic status ring */}
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border relative",
+                        device.optimizationEnabled
+                          ? "bg-emerald-500/10 border-emerald-500/35 shadow-[0_0_12px_rgba(16,185,129,0.15)]"
+                          : "bg-amber-500/10 border-amber-500/35"
+                      )}>
+                        {/* Pulse circle for active mode */}
                         {device.optimizationEnabled && (
-                          <Badge className="text-xs bg-primary/10 text-primary border-0">
-                            <Sparkles className="h-3 w-3 mr-1" /> Auto-Optimizing
-                          </Badge>
+                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
                         )}
+                        <Icon className={cn("h-5 w-5", tpl?.color || "text-[var(--eco-primary)]")} />
                       </div>
-                      {tpl && <p className="text-sm text-muted-foreground mt-0.5">{tpl.action} · Saving {tpl.saving}</p>}
+
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-xs text-foreground">{name}</p>
+                          <Badge variant="outline" className="text-[9px] font-bold px-2 py-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 rounded-full">
+                            <CheckCircle2 className="h-2.5 w-2.5 mr-0.5 shrink-0" /> {t("smartHome.connectedBadge")}
+                          </Badge>
+                          {device.optimizationEnabled && (
+                            <Badge className="text-[9px] font-bold px-2 py-0 bg-[var(--eco-primary)]/10 text-[var(--eco-primary)] border border-[var(--eco-primary)]/20 rounded-full">
+                              <Sparkles className="h-2.5 w-2.5 mr-0.5 shrink-0 text-[var(--eco-primary)] animate-pulse" /> {t("smartHome.autoOptimizingBadge")}
+                            </Badge>
+                          )}
+                        </div>
+                        {tpl && <p className="text-[10px] text-muted-foreground font-medium">{action} · Saving {saving}</p>}
+                      </div>
                     </div>
+
                     {!device.optimizationEnabled && (
                       <Button
-                        size="sm" variant="outline"
+                        size="sm"
+                        className="interactive h-8 text-[10px] font-bold px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-[var(--eco-primary)] hover:from-emerald-600 hover:to-[var(--eco-best)] text-white shadow-sm"
                         disabled={optimizingId === device.id}
                         onClick={() => { setOptimizingId(device.id); optimizeMutation.mutate(device.id); }}
                       >
-                        <Sparkles className="h-3.5 w-3.5 mr-1" />
-                        {optimizingId === device.id ? "Enabling…" : "Enable Auto-Opt"}
+                        <Sparkles className="h-3 w-3 mr-1.5 shrink-0" />
+                        {optimizingId === device.id ? t("smartHome.enabling") : t("smartHome.enableAutoOpt")}
                       </Button>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>
         </motion.div>
       )}
 
-      {/* Connect More Devices */}
+      {/* Connect More Devices Section */}
       {connectedTemplates.length > 0 && (
         <motion.div variants={item} className="space-y-3">
-          <h2 className="font-semibold text-lg">
-            {devices.length === 0 ? "1-Tap Setup — Connect Your Devices" : "Connect More Devices"}
+          <h2 className="font-bold text-sm tracking-wide uppercase text-muted-foreground pl-1">
+            {devices.length === 0 ? t("smartHome.setupTitle") : t("smartHome.connectMore")}
           </h2>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-2 gap-3.5">
             {connectedTemplates.map((tpl) => {
               const Icon = tpl.icon;
               const isConnecting = connectingId === tpl.deviceId;
+              const name = t(`smartHome.templates.${tpl.deviceType}.name`) || tpl.deviceName;
+              const saving = t(`smartHome.templates.${tpl.deviceType}.saving`) || tpl.saving;
+
               return (
-                <Card key={tpl.deviceId} className="shadow-sm border-dashed border-2 border-border/60">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-secondary shrink-0">
-                      <Icon className={`h-5 w-5 ${tpl.color}`} />
+                <div key={tpl.deviceId} className="saas-card relative overflow-hidden group hover:border-[var(--eco-primary)]/40 hover:scale-[1.015] border border-dashed border-border/80 bg-white/20 dark:bg-muted/5 p-4 flex flex-col justify-between h-full">
+                  <div className="flex items-center gap-3.5 mb-4">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-muted dark:bg-muted/10 border border-border/50 shrink-0">
+                      <Icon className={cn("h-4.5 w-4.5 group-hover:scale-110 transition-transform duration-300", tpl.color)} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium">{tpl.deviceName}</p>
-                      <p className="text-xs text-muted-foreground">{tpl.deviceBrand} · {tpl.saving}</p>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-foreground truncate">{name}</p>
+                      <p className="text-[10px] text-muted-foreground font-medium">{tpl.deviceBrand} · {saving}</p>
                     </div>
-                    <Button
-                      size="sm"
-                      disabled={isConnecting}
-                      onClick={() => {
-                        setConnectingId(tpl.deviceId);
-                        connectMutation.mutate(tpl);
-                      }}
-                    >
-                      {isConnecting ? <><Wifi className="h-3.5 w-3.5 mr-1 animate-pulse" />Connecting…</> : <><Plus className="h-3.5 w-3.5 mr-1" />Connect</>}
-                    </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full h-8 text-[10px] font-bold rounded-xl border-border/80 hover:bg-emerald-500/10 hover:text-[var(--eco-primary)] hover:border-[var(--eco-primary)]/30"
+                    disabled={isConnecting}
+                    onClick={() => {
+                      setConnectingId(tpl.deviceId);
+                      connectMutation.mutate(tpl);
+                    }}
+                  >
+                    {isConnecting ? (
+                      <>
+                        <Wifi className="h-3 w-3 mr-1.5 animate-pulse" />
+                        {t("smartHome.connecting")}
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-3 w-3 mr-1" />
+                        {t("smartHome.connect")}
+                      </>
+                    )}
+                  </Button>
+                </div>
               );
             })}
           </div>
         </motion.div>
       )}
 
-      {/* Total passive CO₂ */}
+      {/* Annual Potential Savings info */}
       {devices.length > 0 && totalPassiveCo2 > 0 && (
         <motion.div variants={item}>
-          <div className="rounded-2xl bg-secondary/50 border border-border p-5 text-center space-y-1">
-            <p className="text-muted-foreground text-sm">Annual passive CO₂ reduction potential</p>
-            <p className="text-4xl font-bold text-primary">{totalPassiveCo2.toFixed(2)}t CO₂/year</p>
-            <p className="text-sm text-muted-foreground">Your home is doing the work for you 🏠✨</p>
+          <div className="rounded-2xl border border-border bg-muted/20 dark:bg-muted/5 p-4 text-center space-y-1 backdrop-blur-sm">
+            <p className="text-muted-foreground text-xs font-semibold">{t("smartHome.annualPotential")}</p>
+            <p className="text-xl font-extrabold text-[var(--eco-primary)]">{t("smartHome.annualPotentialVal", { co2: totalPassiveCo2.toFixed(2) })}</p>
+            <p className="text-[10px] text-muted-foreground font-medium">{t("smartHome.doingWork")}</p>
           </div>
         </motion.div>
       )}
 
-      {/* Quick links */}
+      {/* Quick Links Grid */}
       <motion.div variants={item} className="grid sm:grid-cols-3 gap-3">
         <Link href="/rewards">
-          <Card className="shadow-sm cursor-pointer hover:border-primary/40 transition-colors">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Coins className="h-5 w-5 text-yellow-500" />
-              <div>
-                <p className="font-medium text-sm">Eco Rewards</p>
-                <p className="text-xs text-muted-foreground">Coins & cashback</p>
+          <div className="saas-card cursor-pointer group hover:border-[var(--eco-primary)]/30 hover:shadow-md transition-all duration-300 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shrink-0">
+                <Coins className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform duration-300" />
               </div>
-            </CardContent>
-          </Card>
+              <div className="min-w-0">
+                <p className="font-bold text-xs text-foreground truncate">{t("smartHome.quickLinks.rewards")}</p>
+                <p className="text-[10px] text-muted-foreground font-medium truncate">{t("smartHome.quickLinks.rewardsSub")}</p>
+              </div>
+            </div>
+          </div>
         </Link>
         <Link href="/bill-optimizer">
-          <Card className="shadow-sm cursor-pointer hover:border-primary/40 transition-colors">
-            <CardContent className="p-4 flex items-center gap-3">
-              <TrendingDown className="h-5 w-5 text-blue-500" />
-              <div>
-                <p className="font-medium text-sm">Bill Optimizer</p>
-                <p className="text-xs text-muted-foreground">Cut electricity bills</p>
+          <div className="saas-card cursor-pointer group hover:border-[var(--eco-primary)]/30 hover:shadow-md transition-all duration-300 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center border border-sky-500/20 shrink-0">
+                <TrendingDown className="h-4 w-4 text-sky-500 group-hover:scale-110 transition-transform duration-300" />
               </div>
-            </CardContent>
-          </Card>
+              <div className="min-w-0">
+                <p className="font-bold text-xs text-foreground truncate">{t("smartHome.quickLinks.bill")}</p>
+                <p className="text-[10px] text-muted-foreground font-medium truncate">{t("smartHome.quickLinks.billSub")}</p>
+              </div>
+            </div>
+          </div>
         </Link>
         <Link href="/insights">
-          <Card className="shadow-sm cursor-pointer hover:border-primary/40 transition-colors">
-            <CardContent className="p-4 flex items-center gap-3">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <div>
-                <p className="font-medium text-sm">Insights</p>
-                <p className="text-xs text-muted-foreground">View analytics</p>
+          <div className="saas-card cursor-pointer group hover:border-[var(--eco-primary)]/30 hover:shadow-md transition-all duration-300 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
+                <BarChart3 className="h-4 w-4 text-emerald-500 group-hover:scale-110 transition-transform duration-300" />
               </div>
-            </CardContent>
-          </Card>
+              <div className="min-w-0">
+                <p className="font-bold text-xs text-foreground truncate">{t("smartHome.quickLinks.insights")}</p>
+                <p className="text-[10px] text-muted-foreground font-medium truncate">{t("smartHome.quickLinks.insightsSub")}</p>
+              </div>
+            </div>
+          </div>
         </Link>
       </motion.div>
 
-      {/* Eco Bundle CTA */}
+      {/* Premium Eco Bundle CTA */}
       {!subStatus?.subscribed && (
         <motion.div variants={item}>
-          <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-emerald-600/5 border border-primary/20 p-6 flex flex-col md:flex-row gap-4 md:items-center justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-yellow-500" />
-                <p className="font-bold text-lg">Eco Home Bundle</p>
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-[var(--eco-primary)]/5 to-transparent p-6 shadow-lg">
+            {/* Shimmer background gradient */}
+            <div className="absolute right-0 bottom-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -left-12 -top-12 w-32 h-32 bg-[var(--eco-primary)]/10 rounded-full blur-2xl pointer-events-none animate-pulse" />
+
+            <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between relative z-10">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg bg-amber-500/15 flex items-center justify-center border border-amber-500/25">
+                    <Crown className="h-4 w-4 text-amber-500 animate-bounce" style={{ animationDuration: "3s" }} />
+                  </div>
+                  <p className="font-extrabold text-base text-foreground tracking-tight">{t("smartHome.bundle.title")}</p>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                  {t("smartHome.bundle.desc")}
+                </p>
+                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1.5 pt-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ShieldCheck className="h-4 w-4 text-[var(--eco-primary)] shrink-0" />
+                    <span className="font-medium">{t("smartHome.bundle.feature1")}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ShieldCheck className="h-4 w-4 text-[var(--eco-primary)] shrink-0" />
+                    <span className="font-medium">{t("smartHome.bundle.feature2")}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <ShieldCheck className="h-4 w-4 text-[var(--eco-primary)] shrink-0" />
+                    <span className="font-medium">{t("smartHome.bundle.feature3")}</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                AI-powered auto-optimization for all devices. Cancel anytime.
-              </p>
-              <ul className="text-sm text-muted-foreground space-y-0.5 mt-2">
-                <li className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> AI habit learning for every device</li>
-                <li className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> Auto-bill optimizer included</li>
-                <li className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-primary" /> 3× faster Eco Coin earning</li>
-              </ul>
-            </div>
-            <div className="flex flex-col items-center gap-2 shrink-0">
-              <p className="text-3xl font-bold">₹999<span className="text-base font-normal text-muted-foreground">/mo</span></p>
-              <Button
-                className="w-full md:w-auto"
-                disabled={subscribeMutation.isPending}
-                onClick={() => subscribeMutation.mutate()}
-              >
-                {subscribeMutation.isPending ? "Subscribing…" : "Subscribe Now"}
-              </Button>
+
+              <div className="flex flex-col items-center gap-2.5 shrink-0 bg-white/40 dark:bg-black/25 backdrop-blur-sm border border-border/40 p-5 rounded-2xl min-w-[160px] text-center shadow-inner">
+                <div className="space-y-0.5">
+                  <p className="text-xs text-muted-foreground font-bold tracking-wider uppercase">Eco Bundle</p>
+                  <p className="text-2xl font-black text-foreground">{t("smartHome.bundle.pricePerMo", { price: "999" })}</p>
+                </div>
+                <Button
+                  size="default"
+                  className="interactive w-full h-9 text-xs font-bold rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white shadow-md"
+                  disabled={subscribeMutation.isPending}
+                  onClick={() => subscribeMutation.mutate()}
+                >
+                  {subscribeMutation.isPending ? t("smartHome.bundle.subscribing") : t("smartHome.bundle.subscribe")}
+                </Button>
+              </div>
             </div>
           </div>
         </motion.div>
       )}
 
+      {/* Active Subscription Badge/Panel */}
       {subStatus?.subscribed && (
         <motion.div variants={item}>
-          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 p-4 flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-            <div>
-              <p className="font-semibold text-emerald-700 dark:text-emerald-400">Eco Home Bundle Active</p>
-              <p className="text-sm text-muted-foreground">AI is auto-optimizing all your devices 24/7.</p>
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 dark:bg-emerald-500/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
+            <div className="absolute right-0 bottom-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="h-9 w-9 rounded-xl bg-emerald-500/15 flex items-center justify-center border border-emerald-500/25">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              </div>
+              <div>
+                <p className="font-bold text-xs text-emerald-700 dark:text-emerald-400">{t("smartHome.bundle.activeTitle")}</p>
+                <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{t("smartHome.bundle.activeDesc")}</p>
+              </div>
             </div>
-            <Badge className="ml-auto bg-emerald-600 text-white">₹999/mo</Badge>
+            <Badge className="sm:ml-auto bg-emerald-600 text-white text-[9px] font-bold px-3 py-1 border-0 shadow-sm rounded-full shrink-0 relative z-10">
+              {t("smartHome.bundle.pricePerMo", { price: "999" })}
+            </Badge>
           </div>
         </motion.div>
       )}

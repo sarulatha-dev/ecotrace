@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Leaf, LayoutDashboard, PlusCircle, ScanLine, CreditCard,
@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "./language-switcher";
 
 // ── Tooltip for collapsed mode ───────────────────────────────────────────────
 function SidebarTooltip({ label, children }: { label: string; children: React.ReactNode }) {
@@ -40,28 +41,26 @@ function SidebarTooltip({ label, children }: { label: string; children: React.Re
   );
 }
 
-// ── Nav Item (simple, no group) ───────────────────────────────────────────────
 function NavItem({
   href, label, icon: Icon, active, collapsed, badge,
 }: {
-  href: string; label: string; icon: React.ElementType; active: boolean; collapsed: boolean; badge?: string;
+  href: string; label: string; icon: any; active: boolean; collapsed: boolean; badge?: string;
 }) {
   const inner = (
     <Link
       href={href}
       className={cn(
-        "nav-glow group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 w-full",
-        "hover:-translate-y-0.5 hover:scale-[1.02] active:scale-[0.97] active:translate-y-0",
+        "group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-150 w-full relative",
         active
-          ? "nav-active bg-primary text-primary-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground",
-        collapsed && "justify-center px-0"
+          ? "bg-[#DCFCE7] text-[#15803D] font-semibold border-l-[3px] border-[#22C55E] pl-[calc(0.75rem-3px)]"
+          : "text-[#6B7280] hover:text-[#1F2937] hover:bg-[rgba(0,0,0,0.04)]",
+        collapsed && "justify-center px-0 border-l-0 pl-0"
       )}
     >
-      <Icon className={cn("shrink-0 transition-transform duration-200 group-hover:scale-110", collapsed ? "h-5 w-5" : "h-4 w-4")} />
+      <Icon className={cn("shrink-0 transition-transform duration-200 group-hover:scale-110", collapsed ? "h-5 w-5" : "h-4 w-4", active ? "text-[#16A34A]" : "")} />
       {!collapsed && <span className="truncate">{label}</span>}
       {!collapsed && badge && (
-        <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{badge}</span>
+        <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#16A34A]/10 text-[#16A34A]">{badge}</span>
       )}
     </Link>
   );
@@ -74,8 +73,8 @@ function NavGroup({
   label, icon: GroupIcon, items, collapsed, currentPath,
 }: {
   label: string;
-  icon: React.ElementType;
-  items: { href: string; label: string; icon: React.ElementType }[];
+  icon: any;
+  items: { href: string; label: string; icon: any }[];
   collapsed: boolean;
   currentPath: string;
 }) {
@@ -106,16 +105,16 @@ function NavGroup({
       <button
         onClick={() => setOpen((p) => !p)}
         className={cn(
-          "flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-semibold tracking-widest uppercase transition-colors duration-150",
-          hasActive ? "text-primary" : "text-muted-foreground/60 hover:text-muted-foreground"
+          "flex items-center justify-between w-full px-3 py-1.5 rounded-lg text-[11px] font-semibold tracking-widest uppercase transition-colors duration-150",
+          hasActive ? "text-[#16A34A]" : "text-[#9CA3AF] hover:text-[#6B7280]"
         )}
       >
         <div className="flex items-center gap-2">
-          <GroupIcon className="h-3.5 w-3.5" />
+          <GroupIcon className="h-3 w-3" />
           {label}
         </div>
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown className="h-3.5 w-3.5" />
+          <ChevronDown className="h-3 w-3" />
         </motion.div>
       </button>
 
@@ -129,19 +128,19 @@ function NavGroup({
             transition={{ duration: 0.22, ease: "easeInOut" }}
             style={{ overflow: "hidden" }}
           >
-            <div className="mt-0.5 pl-2 border-l-2 border-border/60 ml-3 space-y-0.5 pb-1">
+            <div className="mt-0.5 pl-1 space-y-0.5 pb-1">
               {items.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "nav-glow flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full",
+                    "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 w-full relative",
                     currentPath === item.href
-                      ? "nav-active bg-primary/10 text-primary font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-[#DCFCE7] text-[#15803D] font-semibold border-l-[3px] border-[#22C55E] pl-[calc(0.75rem-3px)]"
+                      : "text-[#6B7280] hover:text-[#1F2937] hover:bg-[rgba(0,0,0,0.04)]"
                   )}
                 >
-                  <item.icon className="h-3.5 w-3.5 shrink-0" />
+                  <item.icon className={cn("h-3.5 w-3.5 shrink-0", currentPath === item.href ? "text-[#16A34A]" : "")} />
                   <span className="truncate">{item.label}</span>
                 </Link>
               ))}
@@ -247,22 +246,44 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useTranslation();
+  const isDarkPage = false;
+
+  const stars = useMemo(() =>
+    Array.from({ length: 120 }).map((_, i) => ({
+      id: i,
+      w: Math.random() * 2.2 + 0.4,
+      top: Math.random() * 100,
+      left: Math.random() * 100,
+      op: Math.random() * 0.7 + 0.15,
+      dur: 2 + Math.random() * 3,
+      delay: Math.random() * 5,
+    })), []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row">
+    <div className={cn(
+      "min-h-screen flex flex-col md:flex-row transition-colors duration-300",
+      isDarkPage ? "dark bg-[#020c12] text-white" : "bg-background text-foreground"
+    )}>
       {/* Mobile Header */}
-      <header className="md:hidden sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b flex items-center px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 text-primary">
+      <header className={cn(
+        "md:hidden sticky top-0 z-50 backdrop-blur-md flex items-center justify-between px-4 py-3 transition-colors duration-300",
+        isDarkPage ? "bg-[#020c12]/90 border-b border-emerald-950/40 text-white" : "bg-background/90 border-b text-foreground"
+      )}>
+        <Link href="/" className={cn("flex items-center gap-2", isDarkPage ? "text-emerald-400" : "text-primary")}>
           <Leaf className="h-6 w-6" />
           <span className="font-bold text-lg tracking-tight">EcoTrace</span>
         </Link>
+        <LanguageSwitcher dark={isDarkPage} />
       </header>
 
       {/* Desktop Sidebar */}
       <motion.aside
         animate={{ width: collapsed ? 72 : 240 }}
         transition={{ duration: 0.25, ease: "easeInOut" }}
-        className="hidden md:flex flex-col border-r bg-card min-h-screen sticky top-0 overflow-hidden"
+        className={cn(
+          "hidden md:flex flex-col border-r min-h-screen sticky top-0 overflow-hidden transition-colors duration-300",
+          isDarkPage ? "bg-[#040e12] border-emerald-950/40" : "bg-card border-border/50"
+        )}
       >
         {/* Logo + collapse toggle */}
         <div className={cn(
@@ -270,13 +291,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           collapsed ? "justify-center" : "justify-between"
         )}>
           {!collapsed && (
-            <Link href="/" className="flex items-center gap-2 text-primary">
+            <Link href="/" className={cn("flex items-center gap-2", isDarkPage ? "text-emerald-400" : "text-primary")}>
               <Leaf className="h-6 w-6" />
               <span className="font-bold text-lg tracking-tight">EcoTrace</span>
             </Link>
           )}
           {collapsed && (
-            <Link href="/" className="text-primary">
+            <Link href="/" className={isDarkPage ? "text-emerald-400" : "text-primary"}>
               <Leaf className="h-6 w-6" />
             </Link>
           )}
@@ -294,31 +315,61 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         <SidebarContent collapsed={collapsed} />
 
-        {/* Bottom eco card — only when expanded */}
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="p-4 shrink-0"
-            >
-              <div className="p-3 rounded-xl bg-primary/8 border border-primary/15">
-                <div className="flex items-center gap-2 mb-1">
-                  <Leaf className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs font-semibold text-primary">{t("sidebar.makeImpact")}</span>
+        {/* Bottom eco card */}
+        <div className="p-4 shrink-0 flex flex-col gap-2 border-t border-[#E5E7EB]">
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="pt-2"
+              >
+                <div className="p-3 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-base">🌱</span>
+                    <span className="text-xs font-semibold text-[#15803D]">{t("sidebar.makeImpact")}</span>
+                  </div>
+                  <p className="text-xs text-[#6B7280] leading-relaxed">{t("sidebar.impactText")}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{t("sidebar.impactText")}</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.aside>
 
       {/* Main content */}
-      <main className="flex-1 pb-20 md:pb-0 overflow-y-auto min-h-[100dvh]">
-        {children}
+      <main className="flex-1 pb-20 md:pb-0 overflow-y-auto min-h-[100dvh] relative">
+        {/* Desktop Header */}
+        <header className="hidden md:flex items-center justify-end px-6 py-3 border-b border-border/40 bg-card/45 backdrop-blur-md sticky top-0 z-40 h-16 shrink-0">
+          <LanguageSwitcher dark={isDarkPage} />
+        </header>
+        {isDarkPage && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 bg-[#020c12]"
+            style={{
+              background: "radial-gradient(ellipse 110% 110% at 55% 52%, #03141b 0%, #020c12 100%)"
+            }}>
+            {stars.map((s) => (
+              <div key={s.id} className="absolute rounded-full bg-white"
+                style={{
+                  width: s.w,
+                  height: s.w,
+                  top: s.top + "%",
+                  left: s.left + "%",
+                  opacity: s.op,
+                  animation: `eco-twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`
+                }}
+              />
+            ))}
+            {/* Glowing atmospheric green overlays */}
+            <div className="absolute inset-0"
+              style={{ background: "radial-gradient(circle at 50% 50%, rgba(16,185,129,0.08) 0%, transparent 80%)" }} />
+          </div>
+        )}
+        <div className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+          {children}
+        </div>
       </main>
 
       {/* Mobile bottom nav */}

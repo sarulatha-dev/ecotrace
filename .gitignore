@@ -61,3 +61,16 @@ laravel-backend/storage/framework/cache/data/
 .env
 artifacts/api-server/.env
 
+# Log files
+*.log
+**/*.log
+console.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Workspace & local developer scripts
+powershell.cmd
+
+

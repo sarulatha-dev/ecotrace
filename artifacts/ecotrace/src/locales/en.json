@@ -6,9 +6,25 @@
 
   "center": {
     "eyebrow": "Carbon Footprint Platform",
-    "title": "Track Your Carbon.",
-    "titleAccent": "Change Your World.",
-    "sub": "The smartest way to measure, reduce, and offset your environmental impact."
+    "title": "Small Actions",
+    "titleAccent": "Big Impact",
+    "sub": "Explore. Learn. Act. Together for a sustainable future."
+  },
+  "rotateHint": "Rotate Earth to Explore",
+  "exploreMore": "Explore More",
+  "howToExplore": "HOW TO EXPLORE",
+  "rotateToDiscover": "Rotate Earth to Discover",
+  "fourDirections": "4 Key Directions",
+  "footer": {
+    "text1": "Every Rotation Brings You Closer to a",
+    "text2": "Better Planet"
+  },
+
+  "directions": {
+    "right": "RIGHT",
+    "left": "LEFT",
+    "up": "UP",
+    "down": "DOWN"
   },
 
   "right": {
@@ -16,7 +32,12 @@
     "label": "What is Carbon Footprint?",
     "desc": "Every action has a carbon cost — from the food you eat to how you travel. Your footprint measures the total greenhouse gases your lifestyle produces in CO₂ equivalent.",
     "fact": "The average person emits 4–10 tons of CO₂ per year.",
-    "cta": "Join Challenges"
+    "cta": "Join Challenges",
+    "bullets": [
+      "Driving",
+      "Electricity",
+      "Shopping"
+    ]
   },
 
   "left": {
@@ -24,7 +45,13 @@
     "label": "Why It Matters?",
     "desc": "Rising CO₂ levels drive climate change, extreme weather, and biodiversity loss. Understanding your footprint is the first step toward meaningful, measurable change.",
     "fact": "1.5°C warming could displace 143 million people by 2050.",
-    "cta": "View Insights"
+    "cta": "View Insights",
+    "bullets": [
+      "Rising Temperatures",
+      "Melting Ice Caps",
+      "Extreme Weather",
+      "Loss of Biodiversity"
+    ]
   },
 
   "up": {
@@ -32,7 +59,14 @@
     "label": "How Our App Helps",
     "desc": "Log daily activities, visualise your trends, join community challenges, and unlock AI coaching — designed to help you live lighter on the planet.",
     "fact": "Users who track daily cut emissions by 23% on average.",
-    "cta": "Go to Dashboard"
+    "cta": "Go to Dashboard",
+    "bullets": [
+      "Save Energy",
+      "Use Reusable Items",
+      "Reduce Plastic",
+      "Plant More Trees",
+      "Use Public Transport"
+    ]
   },
 
   "down": {
@@ -40,7 +74,14 @@
     "label": "Start Your Journey",
     "desc": "Join thousands of eco-conscious users already making a difference. Track, reduce, and earn Eco Coins you can swap, donate, or redeem for green rewards.",
     "fact": "Every tonne of CO₂ avoided = 100 Eco Coins earned.",
-    "cta": "Earn Rewards"
+    "cta": "Earn Rewards",
+    "bullets": [
+      "Footprint Tracker",
+      "Smart Recommendations",
+      "Daily Challenges",
+      "Community Impact",
+      "Rewards & Badges"
+    ]
   },
 
   "popup": {
@@ -91,5 +132,456 @@
       "growth": "Your ecosystem is flourishing 🌿",
       "forest": "Your forest is alive and thriving! 🌳"
     }
+  },
+
+  "dashboard": {
+    "carbonStatus": "Carbon Status",
+    "carbonTracker": "Carbon Tracker",
+    "sevenDayTotal": "7-day total",
+    "avgPerDay": "avg {{avg}}/day",
+    "ecoScore": "Eco Score",
+    "dayStreak": "{{streak}} day streak",
+    "ratingHero": "ECO HERO 🌟",
+    "ratingImproving": "IMPROVING 🌱",
+    "ratingNeedsWork": "NEEDS WORK ⚠️",
+    "energyUsage": "Energy Usage",
+    "travelImpact": "Travel Impact",
+    "flightEquiv": "flight equiv",
+    "treesNeeded": "trees",
+    "activeChallenges": "Active Challenges",
+    "tapToComplete": "— tap to complete",
+    "quickLog": "Quick Log",
+    "logEmissions": "Log Emissions",
+    "logging": "Logging...",
+    "carbonBreakdown": "Carbon Breakdown",
+    "weeklyAverage": "Daily Average",
+    "noActivities": "No activities logged yet.",
+    "recentActivities": "Recent Activities",
+    "details": "Details"
+  },
+
+  "logActivity": {
+    "title": "Log Activity",
+    "desc": "Track your carbon footprint by logging daily activities.",
+    "category": "Category",
+    "type": "Activity Type",
+    "value": "Value",
+    "logButton": "Log Activity",
+    "success": "Activity logged successfully!",
+    "error": "Failed to log activity.",
+    "categories": {
+      "transport": "🚗 Transport",
+      "energy": "⚡ Energy",
+      "food": "🥩 Food",
+      "shopping": "🛍️ Shopping"
+    }
+  },
+
+  "passivePlant": {
+    "title": "PassivePlant",
+    "desc": "Use your phone normally — trees grow in the background",
+    "screenTime": "Screen Time",
+    "treesEarned": "Trees Earned",
+    "ecoCoins": "Eco Coins",
+    "history": "Planted History",
+    "noTrees": "No trees planted yet. Start reducing screen time!",
+    "treesPlanted": "Trees Planted",
+    "co2Offset": "CO₂ Offset",
+    "coinsEarned": "Coins Earned",
+    "forestGrowth": "Forest Growth",
+    "forestLevel": "Forest Level {{level}}",
+    "recentActivity": "Recent Planting Activity",
+    "liveImpact": "Live Impact",
+    "differenceText": "Your activities are making a difference",
+    "keepGoing": "Keep going!",
+    "planetText": "You're doing great for the planet 🌍💚",
+    "logUsage": "Track Screen Time",
+    "screenTimeHours": "Screen Time (hours)",
+    "appUsageHours": "Active App Usage (hours)",
+    "logSuccessMsg": "Log Phone Usage",
+    "tabs": {
+      "overview": "Overview",
+      "history": "Analytics & History",
+      "rewards": "Earned Rewards"
+    }
+  },
+
+  "challengesPage": {
+    "title": "Eco Challenges",
+    "desc": "Join challenges with the community to offset and reduce emissions.",
+    "join": "Join Challenge",
+    "joined": "Joined",
+    "completed": "Completed"
+  },
+
+  "insightsPage": {
+    "title": "Insights & Analytics",
+    "desc": "Deep dive into your impact history.",
+    "activityHeatmap": "Activity Heatmap",
+    "heatmapDesc": "Daily CO₂ emissions over the past 91 days. Darker = more emissions.",
+    "heatmapEmpty": "Log activities to populate the heatmap",
+    "weeklyTrend": "Weekly CO₂ Trend",
+    "weeklyTrendDesc": "Your total emissions per week over the past 8 weeks — see if you're improving.",
+    "trendEmpty": "Log activities to populate the trend line",
+    "focusArea": "Focus Area: {{category}}",
+    "focusAreaDesc": "This category makes up {{percentage}}% of your recent carbon footprint.",
+    "emissionSources": "Emission Sources",
+    "emissionSourcesDesc": "Breakdown by category (30 days)",
+    "noData": "No data yet",
+    "dailyAverages": "Daily Averages",
+    "dailyAveragesDesc": "Your average vs global baseline",
+    "yourAvg": "Your Avg",
+    "globalAvg": "Global Avg",
+    "less": "Less",
+    "more": "More",
+    "weeklyTotal": "Weekly total",
+    "dailyCO2": "Daily CO₂",
+    "tips": {
+      "transport": [
+        "Try carpooling or public transit once a week.",
+        "Ensure tires are properly inflated.",
+        "Combine errands into a single trip."
+      ],
+      "food": [
+        "Substitute one meat meal per week with a plant-based option.",
+        "Buy local, seasonal produce.",
+        "Plan meals carefully to reduce food waste."
+      ],
+      "energy": [
+        "Switch to LED bulbs throughout your home.",
+        "Adjust thermostat by 1-2°.",
+        "Unplug vampire appliances when not in use."
+      ],
+      "shopping": [
+        "Buy secondhand clothing or electronics.",
+        "Consolidate online orders.",
+        "Invest in high-quality items that last longer."
+      ],
+      "default": [
+        "Log more activities for personalised recommendations.",
+        "Check out the Challenges page for ideas."
+      ]
+    }
+  },
+
+  "leaderboardPage": {
+    "title": "Community Leaderboard",
+    "desc": "Anonymous rankings by CO₂ reduced through eco-challenges.",
+    "noEntries": "No entries yet",
+    "completePrompt": "Complete eco-challenges to appear on the leaderboard and inspire others.",
+    "kgSaved": "{{count}} kg saved",
+    "you": "You",
+    "challengesCompleted_one": "{{count}} challenge",
+    "challengesCompleted_other": "{{count}} challenges",
+    "bestCategory": "Best: {{category}}",
+    "co2Saved": "CO₂ saved"
+  },
+
+  "coachPage": {
+    "title": "AI Coach",
+    "desc": "Personalized tips based on your actual data",
+    "last30days": "Your last 30 days",
+    "totalCo2": "Total CO₂",
+    "dailyAvg": "Daily avg",
+    "vsGlobal": "vs. global",
+    "belowAvg": "{{pct}}% below global average",
+    "aboveAvg": "{{pct}}% above global average",
+    "readyTitle": "Ready for your personalised plan?",
+    "readyDesc": "Your AI coach will analyse your footprint data and generate 3 targeted tips — specific to your biggest impact areas.",
+    "getCta": "Get My Personalised Tips",
+    "errorMsg": "Couldn't reach the coach right now — please try again.",
+    "tryAgain": "Try Again",
+    "says": "Your AI Coach says",
+    "opportunity": "Biggest Opportunity",
+    "weeklyGoalTitle": "Your Goal This Week",
+    "refresh": "Refresh Advice",
+    "effort": {
+      "low": "Easy win",
+      "medium": "Some effort",
+      "high": "Big change"
+    },
+    "categories": {
+      "transport": "Transport",
+      "food": "Food & Diet",
+      "energy": "Home Energy",
+      "shopping": "Shopping"
+    }
+  },
+
+  "reportPage": {
+    "title": "Your Eco Report",
+    "desc": "A snapshot of your environmental impact — download and share it.",
+    "reportFor": "Report for",
+    "last30days": "Last 30 days",
+    "totalLogged": "Total CO₂ Logged",
+    "dailyAvgVal": "{{avg}} kg/day avg",
+    "co2Saved": "CO₂ Saved",
+    "challengesDone": "{{count}} challenges done",
+    "treesEquiv": "Trees Equivalent",
+    "treesEquivSub": "trees absorb this yearly",
+    "flightHours": "Flight Hours",
+    "flightHoursSub": "of flying equivalent",
+    "biggestSource": "Biggest Source",
+    "sourceStats": "{{co2}} kg · {{pct}}% of total",
+    "vsGlobal": "vs. Global Avg",
+    "belowGlobal": "{{pct}}% below",
+    "aboveGlobal": "{{pct}}% above",
+    "globalAvgVal": "Global avg: {{avg}} kg/day",
+    "generatedBy": "Generated by EcoTrace · Track your impact",
+    "generating": "Generating...",
+    "downloadPng": "Download PNG",
+    "sharing": "Sharing...",
+    "share": "Share",
+    "dailyAvg": "Daily avg",
+    "challenges": "Challenges",
+    "co2SavedText": "CO₂ saved",
+    "grades": {
+      "champ": "Climate Champion",
+      "leader": "Eco Leader",
+      "thinker": "Green Thinker",
+      "citizen": "Conscious Citizen",
+      "avg": "Average Footprint",
+      "improve": "Room to Improve",
+      "impact": "High Impact"
+    }
+  },
+
+  "bankImport": {
+    "title": "Connect Bank Account",
+    "desc": "Auto-import transactions and estimate their carbon footprint.",
+    "chooseBank": "Choose your bank",
+    "chooseBankDesc": "We'll scan your recent transactions and map them to carbon activities. Running in demo mode — no real credentials needed.",
+    "demoWarn": "Demo mode: connects to a simulated account with realistic recent transactions. No real bank data is accessed.",
+    "connectingTo": "Connecting to {{bank}}",
+    "scanning": "Scanning recent transactions…",
+    "recentTx": "Recent Transactions",
+    "selectTxDesc": "Select the transactions to import as CO₂ activities.",
+    "selectedOfTotal": "{{selected}} of {{total}} selected",
+    "totalEstimated": "Total estimated: {{co2}} kg CO₂",
+    "importSelected": "Import Selected",
+    "importing": "Importing…",
+    "completeTitle": "Import complete!",
+    "completeDesc_one": "{{count}} transaction has been logged as CO₂ activities.",
+    "completeDesc_other": "{{count}} transactions have been logged as CO₂ activities.",
+    "viewDashboard": "View Dashboard",
+    "connectAnother": "Connect Another",
+    "toast": {
+      "successTitle": "Import complete",
+      "successDesc": "{{count}} transactions imported as CO₂ activities.",
+      "failTitle": "Import failed"
+    }
+  },
+
+  "smartHome": {
+    "title": "Your Auto-Eco Home",
+    "desc": "Your home optimizes itself — zero effort required.",
+    "totalPassiveSavings": "Total Passive Savings",
+    "co2SavedVal": "{{co2}} kg CO₂ saved",
+    "didNothing": "You did NOTHING 😎 — your home did it automatically",
+    "moneySaved": "Money saved",
+    "kwhSaved": "kWh saved",
+    "connectedDevices": "Connected Devices",
+    "connectedBadge": "Connected",
+    "autoOptimizingBadge": "Auto-Optimizing",
+    "enableAutoOpt": "Enable Auto-Opt",
+    "enabling": "Enabling…",
+    "setupTitle": "1-Tap Setup — Connect Your Devices",
+    "connectMore": "Connect More Devices",
+    "connecting": "Connecting…",
+    "connect": "Connect",
+    "annualPotential": "Annual passive CO₂ reduction potential",
+    "annualPotentialVal": "{{co2}}t CO₂/year",
+    "doingWork": "Your home is doing the work for you 🏠✨",
+    "quickLinks": {
+      "rewards": "Eco Rewards",
+      "rewardsSub": "Coins & cashback",
+      "bill": "Bill Optimizer",
+      "billSub": "Cut electricity bills",
+      "insights": "Insights",
+      "insightsSub": "View analytics"
+    },
+    "bundle": {
+      "title": "Eco Home Bundle",
+      "desc": "AI-powered auto-optimization for all devices. Cancel anytime.",
+      "feature1": "AI habit learning for every device",
+      "feature2": "Auto-bill optimizer included",
+      "feature3": "3× faster Eco Coin earning",
+      "subscribe": "Subscribe Now",
+      "subscribing": "Subscribing…",
+      "activeTitle": "Eco Home Bundle Active",
+      "activeDesc": "AI is auto-optimizing all your devices 24/7.",
+      "pricePerMo": "₹{{price}}/mo"
+    },
+    "templates": {
+      "AC": {
+        "name": "Living Room AC",
+        "saving": "0.15t CO₂/yr",
+        "action": "Auto-reduces 2°C when you leave"
+      },
+      "light": {
+        "name": "Smart Lights",
+        "saving": "0.05t CO₂/yr",
+        "action": "Auto-turns off when room is empty"
+      },
+      "plug": {
+        "name": "Smart Plugs",
+        "saving": "0.08t CO₂/yr",
+        "action": "Auto-cuts power to idle devices"
+      },
+      "tap": {
+        "name": "Smart Tap",
+        "saving": "0.04t CO₂/yr",
+        "action": "Auto-reduces flow, detects leaks"
+      }
+    },
+    "toast": {
+      "connectedTitle": "Device connected!",
+      "connectedDesc": "1-tap done. Enable optimization to start saving.",
+      "connectFailed": "Connection failed",
+      "optSuccessTitle": "+{{coins}} Eco Coins earned!",
+      "optSuccessDesc": "Auto-optimization is now active.",
+      "optFailed": "Failed",
+      "subSuccessTitle": "🎉 Subscribed to Eco Home Bundle!",
+      "subSuccessDesc": "All devices now auto-optimizing.",
+      "subFailed": "Subscription failed"
+    }
+  },
+
+  "billOptimizer": {
+    "title": "Auto Bill Optimizer",
+    "desc": "Your bills automatically reduce themselves — no monthly effort.",
+    "activeMonthlySavings": "Active Monthly Savings",
+    "savingsVal": "₹{{savings}}/month",
+    "zeroEffort": "Zero manual effort required",
+    "electricityBill": "Electricity Bill",
+    "waterBill": "Water Bill",
+    "active": "Active",
+    "passiveCarbonReduction": "passive carbon reduction",
+    "enableAutoOpt": "Enable Auto-Optimizer",
+    "connecting": "Connecting…",
+    "currentBill": "Your current bill",
+    "afterOpt": "After optimizer",
+    "youSave": "You save {{amount}}",
+    "howItWorks": "How Auto-Optimization Works",
+    "steps": {
+      "1": { "label": "Connect", "desc": "1-tap pairing with your smart meter or device" },
+      "2": { "label": "AI Learns", "desc": "Analyses 14 days of usage patterns" },
+      "3": { "label": "Auto-saves", "desc": "Continuously optimizes without interruption" }
+    },
+    "optimizers": {
+      "electricity": {
+        "description": "Connect your Smart Meter to auto-shift usage to off-peak hours and reduce your bill by up to 25%.",
+        "saving": "0.12t CO₂/year",
+        "unit": "₹/month",
+        "savings": "₹200/month",
+        "features": [
+          "Auto-shifts heavy loads (washing machine, EV charger) to 11pm–6am off-peak",
+          "Detects and alerts vampire power drains",
+          "Negotiates Time-of-Use tariff automatically",
+          "Provides real-time consumption dashboard"
+        ]
+      },
+      "water": {
+        "description": "Connect a Smart Tap controller to auto-reduce flow, detect leaks, and cut water waste by 30%.",
+        "saving": "0.05t CO₂/year",
+        "unit": "₹/month",
+        "savings": "₹150/month",
+        "features": [
+          "Auto-detects and alerts on leaks within 2 minutes",
+          "Reduces flow pressure during non-peak usage",
+          "Tracks daily usage vs. neighbourhood average",
+          "Reminds about seasonal conservation goals"
+        ]
+      }
+    },
+    "toast": {
+      "successTitle": "Auto-Optimizer enabled!",
+      "successDesc": "Savings will kick in immediately.",
+      "fail": "Failed"
+    }
+  },
+
+  "rewardsPage": {
+    "title": "Auto Rewards",
+    "levels": {
+      "Eco Beginner": "Eco Beginner",
+      "Eco Smart": "Eco Smart",
+      "Eco Pro": "Eco Pro",
+      "Eco Legend": "Eco Legend"
+    },
+    "desc": "Earn coins automatically from your eco savings, then swap, sell, or donate.",
+    "ecoCoins": "Eco Coins",
+    "cashBalance": "Cash Balance",
+    "earnPassively": "Earn passively",
+    "coinsAvailable": "coins available",
+    "simulatePassiveEarn": "Simulate Passive Earn (+25)",
+    "earning": "Earning…",
+    "fromSellingCoins": "from selling coins",
+    "rewardsMonthly": "₹{{rewards}}/month rewards",
+    "nextLevel": "Next: {{level}} at {{coins}} coins",
+    "progress": "{{progress}}% there",
+    "swapTab": "Swap",
+    "sellTab": "Sell",
+    "donateTab": "Donate",
+    "sellTitle": "Sell coins to corporates offsetting their carbon",
+    "coinsToSell": "Coins to sell:",
+    "sellCta": "Sell Coins",
+    "selling": "Selling…",
+    "donateTitle": "Donate coins to climate projects",
+    "coinsToDonate": "Coins to donate:",
+    "donateCta": "Donate",
+    "donating": "Donating…",
+    "txnHistory": "Transaction History",
+    "toast": {
+      "passiveEarnTitle": "+25 Eco Coins earned!",
+      "passiveEarnDesc": "Simulated passive home savings.",
+      "swapSuccessTitle": "Swapped! ₹{{discount}} discount",
+      "swapSuccessDesc": "QR: {{qrCode}}",
+      "notEnoughCoins": "Not enough coins",
+      "sellSuccessTitle": "₹{{money}} added to wallet!",
+      "sellSuccessDesc": "Sold {{coins}} coins to {{company}}.",
+      "donateSuccessTitle": "Donated! 🌿",
+      "donateSuccessDesc": "Donated to {{project}}."
+    },
+    "deals": {
+      "coffee": { "label": "Free Coffee", "desc": "Café Day · {{coins}} coins → ₹{{value}}" },
+      "uber": { "label": "₹100 Uber Ride", "desc": "Uber · {{coins}} coins → ₹{{value}}" },
+      "amazon": { "label": "₹200 Voucher", "desc": "Amazon · {{coins}} coins → ₹{{value}}" },
+      "grocery": { "label": "10% Grocery Off", "desc": "BigBasket · {{coins}} coins → ₹{{value}}" }
+    },
+    "companies": {
+      "ola": { "name": "Ola Electric", "rate": "10 coins = ₹44" },
+      "tata": { "name": "Tata Power", "rate": "10 coins = ₹52" },
+      "mahindra": { "name": "Mahindra Green", "rate": "10 coins = ₹48" }
+    },
+    "projects": {
+      "mangrove": { "name": "Mangrove Restoration", "desc": "Plant mangroves in coastal Tamil Nadu" },
+      "solar": { "name": "Rural Solar Access", "desc": "Solar panels for 500 rural homes" },
+      "clean_water": { "name": "Clean Water Initiative", "desc": "Rainwater harvesting for Chennai" }
+    }
+  },
+
+  "visionUpload": {
+    "title": "Photo Scan",
+    "desc": "Upload a photo — AI detects the carbon activity",
+    "dropzoneTitle": "Drop a photo here",
+    "dropzoneSub": "or tap to browse",
+    "analyseCta": "Analyse Photo",
+    "uploadedBubble": "Photo uploaded ✓",
+    "analyzingBubble": "Analysing your photo…",
+    "detectedBubble": "I detected: {{activity}}",
+    "confidence": "Confidence",
+    "surePercent": "{{pct}}% sure",
+    "confirmValPrompt": "Please confirm the value:",
+    "carbonOutput": "Carbon: {{co2}} kg CO₂",
+    "retake": "Retake",
+    "logging": "Logging…",
+    "logCta": "Log Activity",
+    "loggedSuccess": "Logged!",
+    "addedToFootprint": "{{activity}} added to your footprint",
+    "scanAnother": "Scan Another Photo",
+    "errorTitle": "Couldn't identify an activity",
+    "errorDesc": "Try a clearer photo of a ticket, food, electricity meter, or receipt.",
+    "tryAgain": "Try Again"
   }
 }
