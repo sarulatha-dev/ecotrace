@@ -1,0 +1,204 @@
+Create a premium, futuristic eco dashboard with a “Living Forest System” using React, Tailwind CSS, Framer Motion, and react-three-fiber.
+
+🎯 CORE IDEA:
+This is not a normal dashboard.
+It is a living digital ecosystem where user data grows a forest.
+
+A 3D globe acts as the main controller, and the UI responds like nature.
+
+----------------------------------------
+🌍 GLOBE (DATA CONTROLLER)
+----------------------------------------
+
+- Place a small, realistic 3D Earth (top-left or center-left)
+- Use high-quality textures (day map, night lights, clouds)
+- Add subtle green eco glow instead of blue
+- Slow idle rotation
+
+INTERACTION:
+- User can drag/rotate the globe
+- Detect drag direction or region focus
+- Based on interaction, update:
+  → ecoScore
+  → carbonFootprint
+  → dashboard data
+
+- Add inertia rotation + smooth snapping
+- Globe emits soft pulse when data updates
+
+----------------------------------------
+🌳 LIVING FOREST SYSTEM (CORE FEATURE)
+----------------------------------------
+
+The dashboard visually grows like a forest based on ecoScore.
+
+Define stages:
+
+1. DEAD (0–25)
+   - No plants
+   - Dry/desaturated colors
+   - Slight fog
+   - Emotion: empty, needs improvement
+
+2. SPROUT (26–50)
+   - Small plants appear
+   - Light green tones
+   - Subtle particles
+   - Emotion: progress starting
+
+3. GROWTH (51–75)
+   - Medium trees grow
+   - Rich green colors
+   - Light rays
+   - More particles
+   - Emotion: healthy
+
+4. FOREST (76–100)
+   - Dense forest
+   - Vibrant glowing greens
+   - Full life effect (particles, depth)
+   - Emotion: thriving ecosystem
+
+----------------------------------------
+🍂 NEGATIVE FEEDBACK SYSTEM
+----------------------------------------
+
+When carbonFootprint increases:
+
+- Leaves fade (opacity ↓)
+- Colors shift toward yellow/brown
+- Reduce glow intensity
+- Slight dull overlay
+
+This should feel subtle, not punishing.
+
+----------------------------------------
+🧊 DASHBOARD UI (FOREST STYLE)
+----------------------------------------
+
+Theme: Light Eco Forest
+
+- Background:
+  - Soft white + light green gradient
+  - Slight organic texture (nature feel)
+
+- Cards:
+  - Glassmorphism (backdrop-blur)
+  - Slight green tint
+  - Soft shadows + inner glow
+  - Rounded corners (2xl+)
+  - Floating animation (like leaves)
+
+----------------------------------------
+📊 MODULES (ALIVE DATA)
+----------------------------------------
+
+1. Carbon Footprint
+   - Circular progress ring
+   - Animate like growing vine
+   - Color changes based on value
+
+2. Energy Usage
+   - Bars grow upward like plants
+   - Staggered animation
+
+3. Travel Impact
+   - Curved arc lines
+   - Moving glowing particles along routes
+
+4. Eco Score
+   - Large animated number
+   - Smooth counting effect
+   - Glow pulse on increase
+
+----------------------------------------
+🎮 INTERACTION SYSTEM
+----------------------------------------
+
+- Globe controls entire dashboard
+- On interaction:
+  - Data updates
+  - Forest evolves
+  - UI colors shift
+  - Cards animate smoothly
+
+- Hover effects:
+  - Slight scale
+  - Green glow increase
+
+----------------------------------------
+🎬 ANIMATIONS (FRAMER MOTION)
+----------------------------------------
+
+- Cards:
+  fade + slide + floating loop
+
+- Forest:
+  scale-in growth animation
+
+- Numbers:
+  smooth increment animation
+
+- Transitions:
+  easeInOut, very smooth
+
+----------------------------------------
+✨ MICRO INTERACTIONS
+----------------------------------------
+
+- Floating particles (dust/pollen effect)
+- Light rays animation
+- Plants slight sway (natural movement)
+- Ripple effect on click
+- Glow pulse on improvements
+
+----------------------------------------
+🌱 SPECIAL MOMENT (DELIGHT FEATURE)
+----------------------------------------
+
+When ecoScore increases significantly:
+
+- Animate:
+  seed drops → plant grows → tree appears
+
+This should feel rewarding and emotional.
+
+----------------------------------------
+🎨 COLOR SYSTEM
+----------------------------------------
+
+- Primary: Forest Green (#14532d)
+- Accent: Eco Green (#22c55e)
+- Secondary: Moss / Leaf tones
+
+Dynamic UI:
+- Low score → dull colors
+- High score → vibrant glowing greens
+
+----------------------------------------
+🚫 UX RULES
+----------------------------------------
+
+- No clutter
+- Keep globe always visible
+- Smooth transitions only
+- No harsh edges or colors
+- Everything should feel organic and calm
+
+----------------------------------------
+⚡ PERFORMANCE
+----------------------------------------
+
+- Lazy load 3D assets
+- Optimize textures
+- Use Suspense fallback
+
+----------------------------------------
+💚 FINAL EXPERIENCE GOAL:
+User should feel:
+
+“I am growing a forest”
+“My actions impact the planet”
+“This dashboard is alive”
+
+This should feel like a cinematic, emotional, premium product — not a typical dashboard.

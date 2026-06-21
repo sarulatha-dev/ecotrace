@@ -1,0 +1,119 @@
+Create a premium interactive landing page using React, react-three-fiber, drei, and Framer Motion.
+
+CORE CONCEPT:
+A full-screen immersive experience where a highly realistic 3D Earth acts as a storytelling navigation system. The globe is always visible and is the center of interaction.
+
+----------------------------------------
+🌍 3D EARTH (HYPER REALISTIC)
+----------------------------------------
+
+- Use high-resolution NASA-style textures:
+  - Albedo map (earth day texture 8K)
+  - Night lights texture (city lights)
+  - Normal map (surface depth)
+  - Specular/roughness map (water reflection)
+  - Cloud layer (separate transparent sphere with slow rotation)
+
+- Add:
+  - Atmospheric glow (blue rim light using shader or fresnel effect)
+  - Subtle rotation idle animation
+  - Realistic lighting:
+    - Directional light (sun)
+    - Ambient low light
+    - Slight HDR environment
+
+- Use drei helpers:
+  - <OrbitControls> (but restrict zoom & pan)
+  - Enable only rotation
+
+----------------------------------------
+🎮 INTERACTION SYSTEM (CORE UX)
+----------------------------------------
+
+- Detect drag direction manually:
+  - Track mouse/touch start and end positions
+  - Calculate vector direction
+
+- Map directions:
+
+  RIGHT → "What is Carbon Footprint?"
+  LEFT → "Why It Matters?"
+  UP → "Eco Lifestyle Tips"
+  DOWN → "Our Solution"
+
+- Add inertia/smooth rotation when user drags
+- Snap slightly after rotation for premium feel
+
+----------------------------------------
+🧊 FLOATING GLASS CARDS (UI)
+----------------------------------------
+
+- Show content as floating glassmorphism cards:
+  - backdrop-blur
+  - transparent white/green tint
+  - soft shadows
+  - border glow (eco green)
+
+- Animate with Framer Motion:
+  - fade + slide + scale
+  - smooth easing (easeInOut)
+
+- Content per direction:
+
+  RIGHT:
+  Title: What is Carbon Footprint?
+  Content: Simple explanation with real-life examples
+
+  LEFT:
+  Title: Why It Matters?
+  Content: Climate change, global warming impact
+
+  UP:
+  Title: Eco Lifestyle Tips
+  Content: Daily habits like saving energy, reducing plastic
+
+  DOWN:
+  Title: Our Solution
+  Content: App features + CTA button ("Start Your Journey")
+
+----------------------------------------
+🎨 DESIGN SYSTEM
+----------------------------------------
+
+Theme: Dark Eco Premium
+
+- Background: deep black/green gradient
+- Accent: neon green glow (#00ff88 style)
+- Typography: clean modern (Inter / Poppins)
+- UI feel: futuristic + minimal
+
+----------------------------------------
+🚫 UX RULES
+----------------------------------------
+
+- Disable page scroll completely
+- Entire navigation = globe interaction only
+- Globe always visible (center or slightly offset)
+- UI overlays should not block globe interaction
+
+----------------------------------------
+✨ EXTRA POLISH
+----------------------------------------
+
+- Add subtle particle stars in background
+- Add slight camera movement/parallax on idle
+- Add sound effect (optional soft ambient tone)
+- Smooth transitions between sections
+
+----------------------------------------
+⚡ PERFORMANCE
+----------------------------------------
+
+- Use optimized textures (compressed .jpg/.webp)
+- Lazy load textures
+- Use suspense fallback loader
+
+----------------------------------------
+GOAL:
+Make it feel like a cinematic, interactive story — not a website.
+User should feel like they are exploring Earth, not clicking UI.
