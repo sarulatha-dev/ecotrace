@@ -4,10 +4,22 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./batch": "./src/batch/index.ts",
-    "./image": "./src/image/index.ts",
-    "./audio": "./src/audio/index.ts"
+    ".": {
+      "workspace": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./batch": {
+      "workspace": "./src/batch/index.ts",
+      "default": "./dist/batch/index.js"
+    },
+    "./image": {
+      "workspace": "./src/image/index.ts",
+      "default": "./dist/image/index.js"
+    },
+    "./audio": {
+      "workspace": "./src/audio/index.ts",
+      "default": "./dist/audio/index.js"
+    }
   },
   "dependencies": {
     "openai": "^6.27.0",

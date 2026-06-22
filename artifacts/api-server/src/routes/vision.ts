@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, activitiesTable } from "@workspace/db";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { calculateCo2, getActivityDef } from "../lib/carbon-factors";
+import { calculateCo2, getActivityDef } from "../lib/carbon-factors.js";
 
 const router: IRouter = Router();
 

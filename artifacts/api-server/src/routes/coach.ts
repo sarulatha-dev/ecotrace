@@ -3,7 +3,7 @@ import { eq, and, gte, desc } from "drizzle-orm";
 import { db, activitiesTable, challengeCompletionsTable, challengesTable } from "@workspace/db";
 import { GetCoachAdviceBody } from "@workspace/api-zod";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { GLOBAL_DAILY_AVERAGE_KG } from "../lib/carbon-factors";
+import { GLOBAL_DAILY_AVERAGE_KG } from "../lib/carbon-factors.js";
 
 const router: IRouter = Router();
 

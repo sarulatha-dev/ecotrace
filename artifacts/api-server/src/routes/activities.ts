@@ -7,7 +7,7 @@ import {
   DeleteActivityParams,
   GetActivitySummaryQueryParams,
 } from "@workspace/api-zod";
-import { calculateCo2, getActivityDef, GLOBAL_DAILY_AVERAGE_KG } from "../lib/carbon-factors";
+import { calculateCo2, getActivityDef, GLOBAL_DAILY_AVERAGE_KG } from "../lib/carbon-factors.js";
 
 const router: IRouter = Router();
 

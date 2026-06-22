@@ -1,14 +1,14 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
-import activitiesRouter from "./activities";
-import challengesRouter from "./challenges";
-import leaderboardRouter from "./leaderboard";
-import coachRouter from "./coach";
-import visionRouter from "./vision";
-import goalsRouter from "./goals";
-import devicesRouter from "./devices";
-import walletRouter from "./wallet";
-import passiveRouter from "./passive";
+import healthRouter from "./health.js";
+import activitiesRouter from "./activities.js";
+import challengesRouter from "./challenges.js";
+import leaderboardRouter from "./leaderboard.js";
+import coachRouter from "./coach.js";
+import visionRouter from "./vision.js";
+import goalsRouter from "./goals.js";
+import devicesRouter from "./devices.js";
+import walletRouter from "./wallet.js";
+import passiveRouter from "./passive.js";
 
 const router: IRouter = Router();
 

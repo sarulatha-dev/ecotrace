@@ -1,5 +1,5 @@
 import { pgTable, serial, integer, text, timestamp, real } from "drizzle-orm/pg-core";
-import { smartDevicesTable } from "./smart-devices";
+import { smartDevicesTable } from "./smart-devices.js";
 
 export const autoOptimizationsTable = pgTable("auto_optimizations", {
   id: serial("id").primaryKey(),
